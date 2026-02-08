@@ -1,0 +1,23 @@
+# Restaurant POS API
+
+@baseUrl = http://localhost:5268
+
+### Login
+POST {{baseUrl}}/api/auth/login
+Content-Type: application/json
+
+{
+  "userName": "admin",
+  "password": "admin123"
+}
+
+### Get menu items
+GET {{baseUrl}}/api/menu-items?activeOnly=true
+Authorization: Bearer {{token}}
+
+### Upload menu image
+POST {{baseUrl}}/api/menu-items/1/image
+Authorization: Bearer {{token}}
+Content-Type: multipart/form-data
+
+# Note: use REST client to attach file

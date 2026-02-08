@@ -1,0 +1,54 @@
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDEs
+.vs/
+.vscode/
+.idea/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# .NET
+bin/
+obj/
+*.dll
+*.exe
+*.pdb
+*.cache
+*.log
+*.bak
+
+# EF / tooling
+*.nupkg
+project.lock.json
+project.fragment.lock.json
+artifacts/
+
+# Node / Vite
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.vite/
+dist/
+
+# Environment
+.env
+.env.*
+
+# Database / backups
+RestaurantPos.Api/restaurantpos.db
+RestaurantPos.Api/restaurantpos.db-shm
+RestaurantPos.Api/restaurantpos.db-wal
+Backups/
+
+# Built web assets copied into API
+RestaurantPos.Api/wwwroot/app/
+
+# Uploaded media
+RestaurantPos.Api/wwwroot/images/

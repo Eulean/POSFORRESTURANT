@@ -1,0 +1,39 @@
+name: Build and Deploy (Windows Server)
+
+on:
+  push:
+    branches: [ "main" ]
+  workflow_dispatch:
+    inputs:
+      skipBackup:
+        description: "Skip backup step"
+        required: false
+        default: false
+        type: boolean
+
+jobs:
+  deploy:
+    runs-on: [self-hosted, windows]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+
+      - name: Deploy
+        shell: pwsh
+        run: |
+          $skip = "${{ inputs.skipBackup }}" -eq "true"
+          if ($skip) {
+            .\RestaurantPos.Deploy.ps1 -SitePath "${{ secrets.DEPLOY_PATH }}" -SiteName "${{ secrets.IIS_SITE_NAME }}" -AppPool "${{ secrets.IIS_APPPOOL }}" -SkipBackup
+          } else {
+            .\RestaurantPos.Deploy.ps1 -SitePath "${{ secrets.DEPLOY_PATH }}" -SiteName "${{ secrets.IIS_SITE_NAME }}" -AppPool "${{ secrets.IIS_APPPOOL }}"
+          }
