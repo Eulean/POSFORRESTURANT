@@ -27,3 +27,18 @@ export type MenuItem = {
   isActive: boolean
   categoryId?: number | null
 }
+
+export type ShopProfile = {
+  id: number
+  name: string
+  address: string
+  phone: string
+  logoUrl?: string | null
+  updatedAt: string
+}
+
+export type ShopProfileUpdateRequest = {
+  name: string
+  address: string
+  phone: string
+}

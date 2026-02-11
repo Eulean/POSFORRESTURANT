@@ -1,6 +1,8 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Net.Http.Headers;
 using RestaurantPos.Api.Data;
 using RestaurantPos.Api.DTOs;
 using RestaurantPos.Api.Models;
@@ -12,17 +14,35 @@ namespace RestaurantPos.Api.Controllers;
 public class MenuItemsController : ControllerBase
 {
     private readonly AppDbContext _db;
+    private readonly IMemoryCache _cache;
+    private const string CacheVersionKey = "menu-items:version";
 
-    public MenuItemsController(AppDbContext db)
+    public MenuItemsController(AppDbContext db, IMemoryCache cache)
     {
         _db = db;
+        _cache = cache;
     }
 
     [HttpGet]
     [Authorize]
     public async Task<ActionResult<IEnumerable<MenuItemDto>>> GetAll([FromQuery] int? categoryId, [FromQuery] bool? activeOnly)
     {
-        var query = _db.MenuItems.AsQueryable();
+        var version = GetCacheVersion();
+        var cacheKey = $"menu-items:{version}:cat:{categoryId?.ToString() ?? "all"}:active:{activeOnly?.ToString() ?? "all"}";
+        var etag = $"W/\"menu-{version}-{categoryId?.ToString() ?? "all"}-{activeOnly?.ToString() ?? "all"}\"";
+        if (Request.Headers.IfNoneMatch.Any(tag => string.Equals(tag, etag, StringComparison.Ordinal)))
+        {
+            Response.Headers[HeaderNames.ETag] = etag;
+            return StatusCode(StatusCodes.Status304NotModified);
+        }
+
+        if (_cache.TryGetValue(cacheKey, out List<MenuItemDto>? cached))
+        {
+            Response.Headers[HeaderNames.ETag] = etag;
+            return Ok(cached);
+        }
+
+        var query = _db.MenuItems.AsNoTracking().AsQueryable();
 
         if (categoryId.HasValue)
         {
@@ -39,6 +59,8 @@ public class MenuItemsController : ControllerBase
             .Select(m => new MenuItemDto(m.Id, m.Name, m.Description, m.ImageUrl, m.Price, m.IsActive, m.CategoryId))
             .ToListAsync();
 
+        _cache.Set(cacheKey, items, TimeSpan.FromSeconds(30));
+        Response.Headers[HeaderNames.ETag] = etag;
         return Ok(items);
     }
 
@@ -46,7 +68,7 @@ public class MenuItemsController : ControllerBase
     [Authorize]
     public async Task<ActionResult<MenuItemDto>> GetById(int id)
     {
-        var entity = await _db.MenuItems.FindAsync(id);
+        var entity = await _db.MenuItems.AsNoTracking().FirstOrDefaultAsync(m => m.Id == id);
         if (entity == null)
         {
             return NotFound();
@@ -71,6 +93,7 @@ public class MenuItemsController : ControllerBase
 
         _db.MenuItems.Add(entity);
         await _db.SaveChangesAsync();
+        BumpCacheVersion();
 
         return CreatedAtAction(nameof(GetById), new { id = entity.Id },
             new MenuItemDto(entity.Id, entity.Name, entity.Description, entity.ImageUrl, entity.Price, entity.IsActive, entity.CategoryId));
@@ -94,6 +117,7 @@ public class MenuItemsController : ControllerBase
         entity.CategoryId = request.CategoryId;
 
         await _db.SaveChangesAsync();
+        BumpCacheVersion();
         return NoContent();
     }
 
@@ -109,6 +133,7 @@ public class MenuItemsController : ControllerBase
 
         _db.MenuItems.Remove(entity);
         await _db.SaveChangesAsync();
+        BumpCacheVersion();
         return NoContent();
     }
 
@@ -152,12 +177,19 @@ public class MenuItemsController : ControllerBase
         return NoContent();
     }
 
+    public sealed class UploadMenuItemImageRequest
+    {
+        [FromForm(Name = "file")]
+        public IFormFile File { get; set; } = null!;
+    }
+
     [HttpPost("{id:int}/image")]
     [Authorize(Roles = Roles.Admin)]
+    [Consumes("multipart/form-data")]
     [RequestSizeLimit(5 * 1024 * 1024)]
-    public async Task<ActionResult<MenuItemDto>> UploadImage(int id, [FromForm] IFormFile file)
+    public async Task<ActionResult<MenuItemDto>> UploadImage(int id, [FromForm] UploadMenuItemImageRequest request)
     {
-        if (file == null || file.Length == 0)
+        if (request.File == null || request.File.Length == 0)
         {
             return BadRequest("Image file is required.");
         }
@@ -168,7 +200,7 @@ public class MenuItemsController : ControllerBase
             return NotFound();
         }
 
-        var extension = Path.GetExtension(file.FileName);
+        var extension = Path.GetExtension(request.File.FileName);
         if (string.IsNullOrWhiteSpace(extension))
         {
             extension = ".jpg";
@@ -181,12 +213,28 @@ public class MenuItemsController : ControllerBase
 
         await using (var stream = new FileStream(absolutePath, FileMode.Create))
         {
-            await file.CopyToAsync(stream);
+            await request.File.CopyToAsync(stream);
         }
 
         entity.ImageUrl = $"{Request.Scheme}://{Request.Host}/{relativePath}";
         await _db.SaveChangesAsync();
+        BumpCacheVersion();
 
         return Ok(new MenuItemDto(entity.Id, entity.Name, entity.Description, entity.ImageUrl, entity.Price, entity.IsActive, entity.CategoryId));
+    }
+
+    private int GetCacheVersion()
+    {
+        return _cache.GetOrCreate(CacheVersionKey, entry =>
+        {
+            entry.AbsoluteExpirationRelativeToNow = TimeSpan.FromHours(6);
+            return 1;
+        });
+    }
+
+    private void BumpCacheVersion()
+    {
+        var current = GetCacheVersion();
+        _cache.Set(CacheVersionKey, current + 1, TimeSpan.FromHours(6));
     }
 }

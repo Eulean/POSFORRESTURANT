@@ -425,7 +425,7 @@ export default function Inventory() {
                             {item.stockQuantity.toFixed(2)} {item.unit}
                           </p>
                           <p className="text-xs text-stone-500">
-                            Cost: ${item.costPerUnit.toFixed(2)} / {item.unit}
+                            Cost: MMK {item.costPerUnit.toFixed(2)} / {item.unit}
                           </p>
                         </div>
                         <span
@@ -471,6 +471,7 @@ export default function Inventory() {
                 onChange={(event) => setNewIngredient((prev) => ({ ...prev, name: event.target.value }))}
                 placeholder="Tomatoes"
               />
+              <p className="mt-1 text-xs text-stone-500">Ingredient name as shown in recipes.</p>
             </div>
             <div>
               <label className="text-xs uppercase tracking-[0.2em] text-stone-500">Unit</label>
@@ -480,6 +481,7 @@ export default function Inventory() {
                 onChange={(event) => setNewIngredient((prev) => ({ ...prev, unit: event.target.value }))}
                 placeholder="kg / L / each"
               />
+              <p className="mt-1 text-xs text-stone-500">Unit for stock tracking (kg, L, each).</p>
             </div>
             <div>
               <label className="text-xs uppercase tracking-[0.2em] text-stone-500">Stock</label>
@@ -490,6 +492,7 @@ export default function Inventory() {
                 value={newIngredient.stockQuantity}
                 onChange={(event) => setNewIngredient((prev) => ({ ...prev, stockQuantity: Number(event.target.value) }))}
               />
+              <p className="mt-1 text-xs text-stone-500">Current quantity on hand.</p>
             </div>
             <div>
               <label className="text-xs uppercase tracking-[0.2em] text-stone-500">Reorder Level</label>
@@ -500,6 +503,7 @@ export default function Inventory() {
                 value={newIngredient.reorderLevel}
                 onChange={(event) => setNewIngredient((prev) => ({ ...prev, reorderLevel: Number(event.target.value) }))}
               />
+              <p className="mt-1 text-xs text-stone-500">If stock drops to this level, it’s flagged as Low.</p>
             </div>
             <div>
               <label className="text-xs uppercase tracking-[0.2em] text-stone-500">Cost Per Unit</label>
@@ -510,6 +514,7 @@ export default function Inventory() {
                 value={newIngredient.costPerUnit}
                 onChange={(event) => setNewIngredient((prev) => ({ ...prev, costPerUnit: Number(event.target.value) }))}
               />
+              <p className="mt-1 text-xs text-stone-500">Used to calculate ingredient cost and profit.</p>
             </div>
             <label className="flex items-center gap-2 text-sm text-stone-600">
               <input

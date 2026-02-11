@@ -412,7 +412,7 @@ function MenuCard({
           </div>
         ) : (
           <div className="flex items-center justify-between">
-            <p className="text-sm font-semibold text-[var(--ink)]">${item.price.toFixed(2)}</p>
+            <p className="text-sm font-semibold text-[var(--ink)]">MMK {item.price.toFixed(2)}</p>
             <span className="text-xs text-[var(--muted)]">{item.isActive ? 'Visible' : 'Hidden'}</span>
           </div>
         )}

@@ -20,6 +20,7 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<Payment> Payments => Set<Payment>();
     public DbSet<IngredientStockAdjustment> IngredientStockAdjustments => Set<IngredientStockAdjustment>();
     public DbSet<DailyCloseSummary> DailyCloseSummaries => Set<DailyCloseSummary>();
+    public DbSet<ShopProfile> ShopProfiles => Set<ShopProfile>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -49,5 +50,8 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
         builder.Entity<DailyCloseSummary>()
             .HasIndex(x => x.DateUtc)
             .IsUnique();
+
+        builder.Entity<ShopProfile>()
+            .HasIndex(x => x.Name);
     }
 }

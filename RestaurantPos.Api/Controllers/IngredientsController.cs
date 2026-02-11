@@ -22,7 +22,7 @@ public class IngredientsController : ControllerBase
     [Authorize]
     public async Task<ActionResult<IEnumerable<IngredientDto>>> GetAll([FromQuery] bool? activeOnly)
     {
-        var query = _db.Ingredients.AsQueryable();
+        var query = _db.Ingredients.AsNoTracking().AsQueryable();
         if (activeOnly == true)
         {
             query = query.Where(i => i.IsActive);
@@ -40,7 +40,7 @@ public class IngredientsController : ControllerBase
     [Authorize]
     public async Task<ActionResult<IngredientDto>> GetById(int id)
     {
-        var entity = await _db.Ingredients.FindAsync(id);
+        var entity = await _db.Ingredients.AsNoTracking().FirstOrDefaultAsync(i => i.Id == id);
         if (entity == null)
         {
             return NotFound();

@@ -6,8 +6,25 @@ public static class SeedData
 {
     public static async Task EnsureSeededAsync(AppDbContext db)
     {
-        if (db.MenuItems.Any() || db.DiningTables.Any() || db.Ingredients.Any())
+        var hasCoreData = db.MenuItems.Any() || db.DiningTables.Any() || db.Ingredients.Any();
+
+        if (!db.ShopProfiles.Any())
         {
+            db.ShopProfiles.Add(new ShopProfile
+            {
+                Name = "GALA taste",
+                Address = "123 Main Street, City",
+                Phone = "(000) 000-0000",
+                UpdatedAt = DateTime.UtcNow
+            });
+        }
+
+        if (hasCoreData)
+        {
+            if (db.ChangeTracker.HasChanges())
+            {
+                await db.SaveChangesAsync();
+            }
             return;
         }
 

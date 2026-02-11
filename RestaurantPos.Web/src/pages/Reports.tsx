@@ -194,19 +194,19 @@ export default function Reports() {
         <div className="rounded-3xl border border-[var(--border)] bg-[var(--card)] p-6 shadow-sm">
           <p className="text-xs uppercase tracking-[0.2em] text-amber-700/70">Total Sales</p>
           <p className="mt-2 text-3xl font-semibold text-stone-900 dark:text-stone-100">
-            {isLoading ? '...' : `$${report.totalSales.toFixed(2)}`}
+            {isLoading ? '...' : `MMK ${report.totalSales.toFixed(2)}`}
           </p>
         </div>
         <div className="rounded-3xl border border-[var(--border)] bg-[var(--card)] p-6 shadow-sm">
           <p className="text-xs uppercase tracking-[0.2em] text-amber-700/70">Ingredient Cost</p>
           <p className="mt-2 text-3xl font-semibold text-stone-900 dark:text-stone-100">
-            {isLoading ? '...' : `$${report.ingredientCost.toFixed(2)}`}
+            {isLoading ? '...' : `MMK ${report.ingredientCost.toFixed(2)}`}
           </p>
         </div>
         <div className="rounded-3xl border border-[var(--border)] bg-[var(--card)] p-6 shadow-sm">
           <p className="text-xs uppercase tracking-[0.2em] text-amber-700/70">Profit</p>
           <p className="mt-2 text-3xl font-semibold text-stone-900 dark:text-stone-100">
-            {isLoading ? '...' : `$${report.profit.toFixed(2)}`}
+            {isLoading ? '...' : `MMK ${report.profit.toFixed(2)}`}
           </p>
         </div>
         <div className="rounded-3xl border border-[var(--border)] bg-[var(--card)] p-6 shadow-sm">
@@ -254,7 +254,7 @@ export default function Reports() {
                   className="flex items-center justify-between rounded-2xl border border-amber-100 bg-amber-50/50 px-4 py-3 dark:border-stone-700 dark:bg-stone-950"
                 >
                   <span className="text-sm font-semibold text-stone-900 dark:text-stone-100">{item.method}</span>
-                  <span className="text-xs text-stone-600 dark:text-stone-300">${item.total.toFixed(2)}</span>
+                  <span className="text-xs text-stone-600 dark:text-stone-300">MMK {item.total.toFixed(2)}</span>
                 </div>
               ))
             )}
@@ -300,19 +300,19 @@ export default function Reports() {
           <div className="rounded-3xl border border-[var(--border)] bg-[var(--card)] p-6 shadow-sm">
             <p className="text-xs uppercase tracking-[0.2em] text-amber-700/70">Total Sales</p>
             <p className="mt-2 text-3xl font-semibold text-stone-900 dark:text-stone-100">
-              {isMonthlyLoading ? '...' : `$${monthly.totalSales.toFixed(2)}`}
+              {isMonthlyLoading ? '...' : `MMK ${monthly.totalSales.toFixed(2)}`}
             </p>
           </div>
           <div className="rounded-3xl border border-[var(--border)] bg-[var(--card)] p-6 shadow-sm">
             <p className="text-xs uppercase tracking-[0.2em] text-amber-700/70">Ingredient Cost</p>
             <p className="mt-2 text-3xl font-semibold text-stone-900 dark:text-stone-100">
-              {isMonthlyLoading ? '...' : `$${monthly.ingredientCost.toFixed(2)}`}
+              {isMonthlyLoading ? '...' : `MMK ${monthly.ingredientCost.toFixed(2)}`}
             </p>
           </div>
           <div className="rounded-3xl border border-[var(--border)] bg-[var(--card)] p-6 shadow-sm">
             <p className="text-xs uppercase tracking-[0.2em] text-amber-700/70">Profit</p>
             <p className="mt-2 text-3xl font-semibold text-stone-900 dark:text-stone-100">
-              {isMonthlyLoading ? '...' : `$${monthly.profit.toFixed(2)}`}
+              {isMonthlyLoading ? '...' : `MMK ${monthly.profit.toFixed(2)}`}
             </p>
           </div>
           <div className="rounded-3xl border border-[var(--border)] bg-[var(--card)] p-6 shadow-sm">
@@ -361,7 +361,7 @@ export default function Reports() {
                     className="flex items-center justify-between rounded-2xl border border-amber-100 bg-amber-50/50 px-4 py-3 dark:border-stone-700 dark:bg-stone-950"
                   >
                     <span className="text-sm font-semibold text-stone-900 dark:text-stone-100">{item.method}</span>
-                    <span className="text-xs text-stone-600 dark:text-stone-300">${item.total.toFixed(2)}</span>
+                    <span className="text-xs text-stone-600 dark:text-stone-300">MMK {item.total.toFixed(2)}</span>
                   </div>
                 ))
               )}
@@ -400,9 +400,9 @@ export default function Reports() {
                     <tr key={day.dateUtc} className="border-t border-amber-100/70 dark:border-stone-800">
                       <td className="py-2 text-stone-700 dark:text-stone-200">{day.dateUtc.slice(0, 10)}</td>
                       <td className="py-2 text-stone-700 dark:text-stone-200">{day.orders}</td>
-                      <td className="py-2 text-stone-700 dark:text-stone-200">${day.totalSales.toFixed(2)}</td>
-                      <td className="py-2 text-stone-700 dark:text-stone-200">${day.ingredientCost.toFixed(2)}</td>
-                      <td className="py-2 text-stone-700 dark:text-stone-200">${day.profit.toFixed(2)}</td>
+                      <td className="py-2 text-stone-700 dark:text-stone-200">MMK {day.totalSales.toFixed(2)}</td>
+                      <td className="py-2 text-stone-700 dark:text-stone-200">MMK {day.ingredientCost.toFixed(2)}</td>
+                      <td className="py-2 text-stone-700 dark:text-stone-200">MMK {day.profit.toFixed(2)}</td>
                     </tr>
                   ))
                 )}

@@ -35,7 +35,8 @@ export default function Orders() {
 
   useEffect(() => {
     let active = true
-    const load = async () => {
+    const load = async (showLoader: boolean) => {
+      if (showLoader) setIsLoading(true)
       try {
         const [ordersData, tablesData, menuData] = await Promise.all([
           fetchOrders(),
@@ -46,16 +47,22 @@ export default function Orders() {
         setOrders(ordersData)
         setTables(tablesData)
         setMenuItems(menuData)
+        setError(null)
       } catch {
         if (active) setError('Unable to load orders.')
       } finally {
-        if (active) setIsLoading(false)
+        if (active && showLoader) setIsLoading(false)
       }
     }
 
-    load()
+    load(true)
+    const timer = setInterval(() => {
+      load(false)
+    }, 10000)
+
     return () => {
       active = false
+      clearInterval(timer)
     }
   }, [])
 
@@ -189,6 +196,13 @@ export default function Orders() {
       .filter((item) => item.quantity > 0)
   }, [menuItems, selectedItems])
 
+  const selectedTotal = useMemo(() => {
+    return selectedItems.reduce((sum, item) => {
+      const menuItem = menuItems.find((menu) => menu.id === item.menuItemId)
+      return sum + (menuItem?.price ?? 0) * item.quantity
+    }, 0)
+  }, [menuItems, selectedItems])
+
   return (
     <div className="flex flex-col gap-6 rise-in">
       <div className="flex flex-wrap items-center justify-between gap-4">
@@ -293,6 +307,10 @@ export default function Orders() {
                       </div>
                     </div>
                   ))}
+                  <div className="mt-3 flex items-center justify-between border-t border-amber-100 pt-3 text-sm font-semibold text-stone-900">
+                    <span>Estimated total</span>
+                    <span>MMK {selectedTotal.toFixed(2)}</span>
+                  </div>
                 </div>
               )}
             </div>
@@ -436,6 +454,9 @@ export default function Orders() {
                   }
                   placeholder="Receipt or last 4"
                 />
+                <p className="mt-1 text-xs text-stone-500">
+                  Optional. Use card last 4 digits, mobile transfer ID, or receipt number.
+                </p>
               </div>
             </div>
             <div className="mt-6 flex gap-2">

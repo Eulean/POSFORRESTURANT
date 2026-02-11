@@ -40,9 +40,17 @@ public class AuthController : ControllerBase
         }
 
         var isFirstUser = !await _userManager.Users.AnyAsync();
-        if (!isFirstUser && !User.IsInRole(Roles.Admin))
+        if (!isFirstUser)
         {
-            return Forbid();
+            if (User.Identity?.IsAuthenticated != true)
+            {
+                return Unauthorized();
+            }
+
+            if (!User.IsInRole(Roles.Admin))
+            {
+                return Forbid();
+            }
         }
 
         if (isFirstUser)

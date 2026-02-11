@@ -30,6 +30,7 @@ public class OrdersController : ControllerBase
             .Include(o => o.DiningTable)
             .Include(o => o.Items)
             .ThenInclude(i => i.MenuItem)
+            .AsNoTracking()
             .AsQueryable();
 
         if (status.HasValue)
@@ -62,6 +63,7 @@ public class OrdersController : ControllerBase
             .Include(o => o.DiningTable)
             .Include(o => o.Items)
             .ThenInclude(i => i.MenuItem)
+            .AsNoTracking()
             .FirstOrDefaultAsync(o => o.Id == id);
 
         if (order == null)
@@ -100,7 +102,12 @@ public class OrdersController : ControllerBase
         var paidTotal = order.Payments.Sum(p => p.Amount);
         var balance = order.TotalAmount - paidTotal;
         var lastPayment = order.Payments.OrderByDescending(p => p.PaidAt).FirstOrDefault();
+        var shopProfile = await _db.ShopProfiles.AsNoTracking().FirstOrDefaultAsync();
+        var shopName = string.IsNullOrWhiteSpace(shopProfile?.Name) ? "GALA taste" : shopProfile.Name;
+        var shopAddress = string.IsNullOrWhiteSpace(shopProfile?.Address) ? "123 Main Street, City" : shopProfile.Address;
+        var shopPhone = string.IsNullOrWhiteSpace(shopProfile?.Phone) ? "(000) 000-0000" : shopProfile.Phone;
 
+        var logoPath = ResolveReceiptLogoPath();
         var pdf = Document.Create(container =>
         {
             container.Page(page =>
@@ -111,21 +118,48 @@ public class OrdersController : ControllerBase
 
                 page.Content().Column(column =>
                 {
-                    column.Spacing(8);
-                    column.Item().Text("GALA").FontSize(20).Bold();
-                    column.Item().Text("Restaurant POS").FontSize(12).SemiBold();
-                    column.Item().Text("123 Main Street, City").FontSize(10);
-                    column.Item().Text("Phone: (000) 000-0000").FontSize(10);
-                    column.Item().Text($"Receipt #{order.Id}").FontSize(12).Bold();
-                    column.Item().Text($"Table: {order.DiningTable.Name}");
-                    column.Item().Text($"Status: {order.Status}");
-                    column.Item().Text($"Opened: {order.CreatedAt:yyyy-MM-dd HH:mm}");
-                    if (lastPayment != null)
+                    column.Spacing(10);
+
+                    column.Item().Row(row =>
                     {
-                        column.Item().Text($"Last Payment: {lastPayment.PaidAt:yyyy-MM-dd HH:mm}");
-                    }
+                        row.RelativeItem().Column(left =>
+                        {
+                            left.Spacing(4);
+                            left.Item().Text(shopName).FontSize(20).Bold();
+                            left.Item().Text("Restaurant POS").FontSize(11).SemiBold().FontColor(Colors.Grey.Darken1);
+                            left.Item().Text(shopAddress).FontSize(10);
+                            left.Item().Text($"Phone: {shopPhone}").FontSize(10);
+                        });
+
+                        row.ConstantItem(90).AlignRight().AlignMiddle().Element(logo =>
+                        {
+                            if (logoPath != null)
+                            {
+                                logo.Width(80).Image(logoPath).FitWidth();
+                            }
+                        });
+                    });
 
                     column.Item().LineHorizontal(1).LineColor(Colors.Grey.Lighten2);
+
+                    column.Item().Background(Colors.Grey.Lighten4).Padding(10).Row(row =>
+                    {
+                        row.RelativeItem().Column(info =>
+                        {
+                            info.Spacing(3);
+                            info.Item().Text($"Receipt #{order.Id}").FontSize(12).Bold();
+                            info.Item().Text($"Table: {order.DiningTable.Name}");
+                            info.Item().Text($"Status: {order.Status}");
+                            info.Item().Text($"Opened: {order.CreatedAt:yyyy-MM-dd HH:mm}");
+                            if (lastPayment != null)
+                            {
+                                info.Item().Text($"Last Payment: {lastPayment.PaidAt:yyyy-MM-dd HH:mm}");
+                            }
+                        });
+
+                        row.ConstantItem(80).AlignRight().AlignBottom().Text(order.CreatedAt.ToString("ddd, MMM dd"))
+                            .FontSize(10).FontColor(Colors.Grey.Darken1);
+                    });
 
                     column.Item().Table(table =>
                     {
@@ -138,33 +172,78 @@ public class OrdersController : ControllerBase
 
                         table.Header(header =>
                         {
-                            header.Cell().Text("Item").SemiBold();
-                            header.Cell().AlignRight().Text("Qty").SemiBold();
-                            header.Cell().AlignRight().Text("Total").SemiBold();
+                            header.Cell().Background(Colors.Grey.Lighten4).PaddingVertical(6).PaddingLeft(4)
+                                .Text("Item").SemiBold();
+                            header.Cell().Background(Colors.Grey.Lighten4).PaddingVertical(6)
+                                .AlignRight().Text("Qty").SemiBold();
+                            header.Cell().Background(Colors.Grey.Lighten4).PaddingVertical(6).PaddingRight(4)
+                                .AlignRight().Text("Total").SemiBold();
                         });
 
                         foreach (var item in order.Items)
                         {
-                            table.Cell().Text(item.MenuItem.Name);
-                            table.Cell().AlignRight().Text(item.Quantity.ToString());
-                            table.Cell().AlignRight().Text(item.LineTotal.ToString("C"));
+                            table.Cell().PaddingVertical(4).Text(item.MenuItem.Name);
+                            table.Cell().PaddingVertical(4).AlignRight().Text(item.Quantity.ToString());
+                            table.Cell().PaddingVertical(4).AlignRight().Text(FormatMmk(item.LineTotal));
                         }
                     });
 
                     column.Item().LineHorizontal(1).LineColor(Colors.Grey.Lighten2);
 
-                    column.Item().AlignRight().Text($"Subtotal: {order.Subtotal:C}").SemiBold();
-                    column.Item().AlignRight().Text($"Total: {order.TotalAmount:C}").Bold();
-                    column.Item().AlignRight().Text($"Paid: {paidTotal:C}");
+                    column.Item().AlignRight().Background(Colors.Grey.Lighten4).Padding(10).Column(totals =>
+                    {
+                        totals.Spacing(4);
+                        totals.Item().AlignRight().Text($"Subtotal: {FormatMmk(order.Subtotal)}").SemiBold();
+                        totals.Item().AlignRight().Text($"Total: {FormatMmk(order.TotalAmount)}").Bold();
+                        totals.Item().AlignRight().Text($"Paid: {FormatMmk(paidTotal)}");
+                        if (balance > 0)
+                        {
+                            totals.Item().AlignRight().Text($"Balance: {FormatMmk(balance)}").FontColor(Colors.Red.Darken2);
+                        }
+                    });
+
                     if (balance > 0)
                     {
-                        column.Item().AlignRight().Text($"Balance: {balance:C}").FontColor(Colors.Red.Darken2);
+                        // balance already shown in totals box
                     }
+
+                    column.Item().PaddingTop(6).AlignCenter().Text("Thank you for dining with us!")
+                        .FontSize(10).FontColor(Colors.Grey.Darken1);
+                    column.Item().AlignCenter().Text("Please come again.").FontSize(9).FontColor(Colors.Grey.Darken1);
                 });
             });
         }).GeneratePdf();
 
         return File(pdf, "application/pdf", $"receipt-{order.Id}.pdf");
+    }
+
+    private static string? ResolveReceiptLogoPath()
+    {
+        var contentRoot = Directory.GetCurrentDirectory();
+        var appLogo = Path.Combine(contentRoot, "wwwroot", "app", "logo.png");
+        if (System.IO.File.Exists(appLogo))
+        {
+            return appLogo;
+        }
+
+        var rootLogo = Path.Combine(contentRoot, "wwwroot", "logo.png");
+        if (System.IO.File.Exists(rootLogo))
+        {
+            return rootLogo;
+        }
+
+        var devLogo = Path.GetFullPath(Path.Combine(contentRoot, "..", "RestaurantPos.Web", "public", "logo.png"));
+        if (System.IO.File.Exists(devLogo))
+        {
+            return devLogo;
+        }
+
+        return null;
+    }
+
+    private static string FormatMmk(decimal amount)
+    {
+        return $"MMK {amount:N2}";
     }
 
     [HttpPost]

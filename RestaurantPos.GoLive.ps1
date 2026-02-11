@@ -23,7 +23,15 @@ if (-not (Test-Path $appSettingsProd)) {
 
 $appSettings = Get-Content -Raw -Path $appSettingsProd | ConvertFrom-Json
 $jwtKey = $appSettings.Jwt.Key
+$envJwtKey = $env:Jwt__Key
 $corsOrigins = $appSettings.Cors.Origins
+$connectionString = $appSettings.ConnectionStrings.DefaultConnection
+
+if ([string]::IsNullOrWhiteSpace($jwtKey) -or $jwtKey -eq "") {
+  if (-not [string]::IsNullOrWhiteSpace($envJwtKey)) {
+    $jwtKey = $envJwtKey
+  }
+}
 
 if ([string]::IsNullOrWhiteSpace($jwtKey) -or $jwtKey -like "*REPLACE_WITH_SECURE*") {
   Write-Error "Jwt:Key is not set to a secure value."
@@ -37,10 +45,19 @@ if (-not $corsOrigins -or $corsOrigins.Count -eq 0) {
 
 Write-Host "Config check: OK" -ForegroundColor Green
 
-if (-not (Test-Path $dbPath)) {
-  Write-Warning "Database not found at $dbPath."
+$dataSource = ""
+if ($connectionString -match "Data Source=([^;]+)") {
+  $dataSource = $Matches[1]
+}
+
+if ([string]::IsNullOrWhiteSpace($dataSource)) {
+  Write-Warning "Could not determine database path from connection string."
 } else {
-  Write-Host "Database found" -ForegroundColor Green
+  if (-not (Test-Path $dataSource)) {
+    Write-Warning "Database not found at $dataSource."
+  } else {
+    Write-Host "Database found" -ForegroundColor Green
+  }
 }
 
 try {

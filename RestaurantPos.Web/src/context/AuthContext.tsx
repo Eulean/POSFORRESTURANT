@@ -12,7 +12,7 @@ export type AuthState = {
 }
 
 type AuthContextValue = AuthState & {
-  login: (userName: string, password: string) => Promise<void>
+  login: (userName: string, password: string) => Promise<AuthResponse>
   logout: () => void
 }
 
@@ -60,6 +60,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setToken(response.token)
     setUserName(response.userName)
     setRoles(response.roles)
+    return response
   }
 
   const logout = () => {

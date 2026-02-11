@@ -142,13 +142,13 @@ public class ReportsController : ControllerBase
         summary.Cell(3, 2).Value = report.OrdersTotal;
         summary.Cell(4, 1).Value = "Total Sales";
         summary.Cell(4, 2).Value = report.TotalSales;
-        summary.Cell(4, 2).Style.NumberFormat.Format = "$#,##0.00";
+        summary.Cell(4, 2).Style.NumberFormat.Format = "\"MMK\" #,##0.00";
         summary.Cell(5, 1).Value = "Ingredient Cost";
         summary.Cell(5, 2).Value = report.IngredientCost;
-        summary.Cell(5, 2).Style.NumberFormat.Format = "$#,##0.00";
+        summary.Cell(5, 2).Style.NumberFormat.Format = "\"MMK\" #,##0.00";
         summary.Cell(6, 1).Value = "Profit";
         summary.Cell(6, 2).Value = report.Profit;
-        summary.Cell(6, 2).Style.NumberFormat.Format = "$#,##0.00";
+        summary.Cell(6, 2).Style.NumberFormat.Format = "\"MMK\" #,##0.00";
 
         summary.Cell(8, 1).Value = "Top Items";
         summary.Cell(8, 1).Style.Font.SetBold();
@@ -176,7 +176,7 @@ public class ReportsController : ControllerBase
         {
             summary.Cell(revenueRow, 1).Value = method.Method;
             summary.Cell(revenueRow, 2).Value = method.Total;
-            summary.Cell(revenueRow, 2).Style.NumberFormat.Format = "$#,##0.00";
+            summary.Cell(revenueRow, 2).Style.NumberFormat.Format = "\"MMK\" #,##0.00";
             revenueRow++;
         }
 
@@ -196,11 +196,11 @@ public class ReportsController : ControllerBase
             daily.Cell(dayRow, 1).Value = day.DateUtc.ToString("yyyy-MM-dd");
             daily.Cell(dayRow, 2).Value = day.Orders;
             daily.Cell(dayRow, 3).Value = day.TotalSales;
-            daily.Cell(dayRow, 3).Style.NumberFormat.Format = "$#,##0.00";
+            daily.Cell(dayRow, 3).Style.NumberFormat.Format = "\"MMK\" #,##0.00";
             daily.Cell(dayRow, 4).Value = day.IngredientCost;
-            daily.Cell(dayRow, 4).Style.NumberFormat.Format = "$#,##0.00";
+            daily.Cell(dayRow, 4).Style.NumberFormat.Format = "\"MMK\" #,##0.00";
             daily.Cell(dayRow, 5).Value = day.Profit;
-            daily.Cell(dayRow, 5).Style.NumberFormat.Format = "$#,##0.00";
+            daily.Cell(dayRow, 5).Style.NumberFormat.Format = "\"MMK\" #,##0.00";
             dayRow++;
         }
         daily.Columns().AdjustToContents();

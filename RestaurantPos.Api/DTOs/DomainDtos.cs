@@ -33,3 +33,7 @@ public record OrderStatusUpdateRequest(string Status);
 public record PaymentCreateRequest(decimal Amount, string Method, string? Reference);
 
 public record StockAdjustmentRequest(int IngredientId, decimal QuantityChange, string Reason);
+
+public record ShopProfileDto(int Id, string Name, string Address, string Phone, string? LogoUrl, DateTime UpdatedAt);
+
+public record ShopProfileUpdateRequest(string Name, string Address, string Phone);
