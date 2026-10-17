@@ -2,6 +2,8 @@
 
 Single-location Restaurant POS with .NET 8 + SQLite backend and React (Vite) frontend.
 
+For restaurant operators, see the [detailed Myanmar-language user guide](USER_GUIDE_MY.md).
+
 ## Easy local hosting on a Windows laptop
 
 Download the latest ZIP from [GitHub Releases](https://github.com/Eulean/POSFORRESTURANT/releases/latest).
