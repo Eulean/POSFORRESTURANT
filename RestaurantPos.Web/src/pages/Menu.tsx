@@ -11,7 +11,7 @@ import {
 } from '../api/menu'
 import type { MenuItem } from '../types/api'
 import type { MenuCategory, MenuItemCreateRequest } from '../types/menu'
-import { API_BASE_URL } from '../api/config'
+import { mediaUrl } from '../api/config'
 
 const emptyForm: MenuItemCreateRequest = {
   name: '',
@@ -348,11 +348,7 @@ function MenuCard({
   })
   const [isUploading, setIsUploading] = useState(false)
 
-  const imageUrl = item.imageUrl?.startsWith('http')
-    ? item.imageUrl
-    : item.imageUrl
-      ? `${API_BASE_URL}/${item.imageUrl}`
-      : ''
+  const imageUrl = mediaUrl(item.imageUrl)
 
   return (
     <div className="rounded-3xl border border-[var(--border)] bg-[var(--card)] p-5 shadow-sm">

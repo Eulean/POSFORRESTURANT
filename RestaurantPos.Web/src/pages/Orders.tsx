@@ -7,7 +7,7 @@ import type { MenuItem } from '../types/api'
 import type { DiningTable, Order, OrderCreateItem } from '../types/orders'
 import type { PaymentCreateRequest } from '../types/payments'
 import { useAuth } from '../context/AuthContext'
-import { API_BASE_URL } from '../api/config'
+import { mediaUrl } from '../api/config'
 
 const statusFlow = ['Open', 'InProgress', 'Ready', 'Served', 'Paid', 'Closed']
 
@@ -28,10 +28,7 @@ export default function Orders() {
     method: 'Cash',
     reference: ''
   })
-  const imageUrlFor = (item: MenuItem) => {
-    if (!item.imageUrl) return ''
-    return item.imageUrl.startsWith('http') ? item.imageUrl : `${API_BASE_URL}/${item.imageUrl}`
-  }
+  const imageUrlFor = (item: MenuItem) => mediaUrl(item.imageUrl)
 
   useEffect(() => {
     let active = true
