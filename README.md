@@ -4,6 +4,8 @@ Single-location Restaurant POS with .NET 8 + SQLite backend and React (Vite) fro
 
 ## Easy local hosting on a Windows laptop
 
+Download the latest ZIP from [GitHub Releases](https://github.com/Eulean/POSFORRESTURANT/releases/latest).
+
 For a restaurant operator, extract the prebuilt `out/RestaurantPos-LocalHost.zip` into a stable location on a Windows 10/11 x64 laptop (for example, Documents), then double-click `Start Restaurant POS.cmd`. The first launch asks for an admin password of at least 10 characters. Sign in as `admin`, open **Connect devices**, and let staff scan the QR code while their phones or tablets are on the same private Wi-Fi. iPhone, Android, and PC clients use their browser; no internet connection is needed. Keep the laptop awake while the restaurant is open. Double-click `Stop Restaurant POS.cmd` to stop hosting.
 
 Windows may ask for administrator approval once to allow TCP port 5268 on **Private** networks. The host will only listen on `localhost` and private network interfaces marked Private in Windows. If there is no Private network, change the trusted restaurant Wi-Fi's Windows network profile to Private, then restart the POS. Guest Wi-Fi with client isolation cannot be used. Do not forward port 5268 to the internet. This local setup uses HTTP, so use a trusted, password-protected restaurant Wi-Fi; it is not appropriate for untrusted networks.
@@ -11,6 +13,8 @@ Windows may ask for administrator approval once to allow TCP port 5268 on **Priv
 The database, uploaded images, logo, and backups live in `%LOCALAPPDATA%\RestaurantPos`. Keep that folder when replacing the app version. An SQLite-consistent ZIP backup is made at startup and every 24 hours while the app runs; admins can also select **Create backup now** on **Connect devices**. Copy ZIP backups from `%LOCALAPPDATA%\RestaurantPos\Backups` to a USB drive or other separate storage. The old `RestaurantPos.Backup.ps1` is for the developer setup, not this local-host package. A guided restore is not yet included: retain both the data folder and backup ZIPs before any reinstall or laptop replacement.
 
 To build the folder from source, run `powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Build-LocalHost.ps1` from the repository root on a Windows development machine with Node/npm and the .NET 8 SDK. The resulting package is self-contained: the restaurant laptop does not need these development tools. This step implements **PC hosting with phone/browser clients**, not hosting from an Android or iOS phone.
+
+To publish a new downloadable ZIP, run `powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Publish-LocalHostRelease.ps1` on a Windows development machine signed in to GitHub through Git Credential Manager. It rebuilds the ZIP and uploads it as a new versioned entry on the repository's **Releases** page. Run it only after your latest code is committed and pushed to `main`. The restaurant laptop only downloads the ZIP; it never needs the development tools.
 
 Features:
 
