@@ -15,12 +15,14 @@ public class MenuItemsController : ControllerBase
 {
     private readonly AppDbContext _db;
     private readonly IMemoryCache _cache;
+    private readonly IConfiguration _configuration;
     private const string CacheVersionKey = "menu-items:version";
 
-    public MenuItemsController(AppDbContext db, IMemoryCache cache)
+    public MenuItemsController(AppDbContext db, IMemoryCache cache, IConfiguration configuration)
     {
         _db = db;
         _cache = cache;
+        _configuration = configuration;
     }
 
     [HttpGet]
@@ -207,7 +209,10 @@ public class MenuItemsController : ControllerBase
         }
         var fileName = $"{Guid.NewGuid():N}{extension}";
         var relativePath = Path.Combine("images", "menu", fileName).Replace("\\", "/");
-        var absolutePath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "images", "menu", fileName);
+        var dataDirectory = _configuration["LocalHost:DataDirectory"];
+        var absolutePath = dataDirectory == null
+            ? Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "images", "menu", fileName)
+            : Path.Combine(dataDirectory, "images", "menu", fileName);
 
         Directory.CreateDirectory(Path.GetDirectoryName(absolutePath)!);
 
@@ -216,7 +221,7 @@ public class MenuItemsController : ControllerBase
             await request.File.CopyToAsync(stream);
         }
 
-        entity.ImageUrl = $"{Request.Scheme}://{Request.Host}/{relativePath}";
+        entity.ImageUrl = $"/{relativePath}";
         await _db.SaveChangesAsync();
         BumpCacheVersion();
 

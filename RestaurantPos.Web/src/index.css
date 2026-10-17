@@ -1,9 +1,8 @@
-@import url("https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600;700&family=Sora:wght@400;500;600;700&display=swap");
 @import "tailwindcss";
 
 :root {
   color-scheme: light;
-  font-family: "Sora", system-ui, -apple-system, Segoe UI, sans-serif;
+  font-family: system-ui, -apple-system, Segoe UI, sans-serif;
 
   --canvas: #f7f1e8;
   --canvas-glow: #fff8f1;

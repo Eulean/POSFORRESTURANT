@@ -12,6 +12,7 @@ import Orders from './pages/Orders'
 import Tables from './pages/Tables'
 import NotAuthorized from './pages/NotAuthorized'
 import Reports from './pages/Reports'
+import Host from './pages/Host'
 import { useLoading } from './context/LoadingContext'
 
 export default function App() {
@@ -38,6 +39,7 @@ export default function App() {
               <Route path="/inventory" element={<Inventory />} />
               <Route path="/reports" element={<Reports />} />
               <Route path="/admin" element={<Admin />} />
+              <Route path="/host" element={<Host />} />
             </Route>
           </Route>
         </Route>

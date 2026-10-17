@@ -52,3 +52,6 @@ RestaurantPos.Api/wwwroot/app/
 
 # Uploaded media
 RestaurantPos.Api/wwwroot/images/
+
+# Self-contained local-host release package
+out/

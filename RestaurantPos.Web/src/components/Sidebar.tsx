@@ -10,6 +10,7 @@ const allLinks = [
   { to: "/inventory", label: "Inventory", roles: ["Admin"] },
   { to: "/reports", label: "Reports", roles: ["Admin"] },
   { to: "/admin", label: "Admin", roles: ["Admin"] },
+  { to: "/host", label: "Connect devices", roles: ["Admin"] },
 ];
 
 export default function Sidebar() {

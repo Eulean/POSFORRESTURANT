@@ -14,6 +14,24 @@ using RestaurantPos.Api.Data;
 using RestaurantPos.Api.Models;
 
 var builder = WebApplication.CreateBuilder(args);
+var localHostMode = builder.Environment.IsEnvironment("LocalHost");
+string? localHostDataDirectory = null;
+if (localHostMode)
+{
+    var configPath = Environment.GetEnvironmentVariable("RESTAURANTPOS_CONFIG_PATH");
+    if (string.IsNullOrWhiteSpace(configPath) || !File.Exists(configPath))
+    {
+        throw new InvalidOperationException("Local host configuration is missing. Start the app with Start Restaurant POS.cmd.");
+    }
+
+    builder.Configuration.AddJsonFile(configPath, optional: false, reloadOnChange: false);
+    localHostDataDirectory = builder.Configuration["LocalHost:DataDirectory"];
+    if (string.IsNullOrWhiteSpace(localHostDataDirectory) || !Path.IsPathRooted(localHostDataDirectory))
+    {
+        throw new InvalidOperationException("LocalHost:DataDirectory must be an absolute path.");
+    }
+    Directory.CreateDirectory(localHostDataDirectory);
+}
 
 QuestPDF.Settings.License = LicenseType.Community;
 
@@ -24,6 +42,11 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddHealthChecks();
 builder.Services.AddMemoryCache();
+if (localHostMode)
+{
+    builder.Services.AddSingleton<LocalHostBackupService>();
+    builder.Services.AddHostedService(services => services.GetRequiredService<LocalHostBackupService>());
+}
 builder.Services.AddResponseCompression(options =>
 {
     options.EnableForHttps = true;
@@ -88,7 +111,7 @@ builder.Services
 var jwtKey = builder.Configuration["Jwt:Key"] ?? "dev-only-change-me-please";
 var jwtIssuer = builder.Configuration["Jwt:Issuer"] ?? "RestaurantPos";
 var jwtAudience = builder.Configuration["Jwt:Audience"] ?? "RestaurantPos";
-if (builder.Environment.IsProduction())
+if (builder.Environment.IsProduction() || localHostMode)
 {
     if (string.IsNullOrWhiteSpace(jwtKey) || jwtKey.Contains("dev-only-change-me-please", StringComparison.OrdinalIgnoreCase))
     {
@@ -100,12 +123,12 @@ if (builder.Environment.IsProduction())
         throw new InvalidOperationException("Jwt:Key must be at least 32 characters in production.");
     }
 
-    if (allowedOrigins.Length == 0)
+    if (!localHostMode && allowedOrigins.Length == 0)
     {
         throw new InvalidOperationException("Cors:Origins must be set in production.");
     }
 
-    if (allowedOrigins.Any(origin => origin.Contains("localhost", StringComparison.OrdinalIgnoreCase)))
+    if (!localHostMode && allowedOrigins.Any(origin => origin.Contains("localhost", StringComparison.OrdinalIgnoreCase)))
     {
         throw new InvalidOperationException("Cors:Origins must not include localhost in production.");
     }
@@ -166,7 +189,7 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-if (!app.Environment.IsDevelopment())
+if (!app.Environment.IsDevelopment() && !localHostMode)
 {
     app.UseHttpsRedirection();
 }
@@ -174,6 +197,29 @@ if (!app.Environment.IsDevelopment())
 app.UseResponseCompression();
 app.UseRouting();
 app.UseCors("DefaultCors");
+
+if (localHostDataDirectory != null)
+{
+    var mediaDirectory = Path.Combine(localHostDataDirectory, "images");
+    Directory.CreateDirectory(mediaDirectory);
+    app.UseStaticFiles(new StaticFileOptions
+    {
+        FileProvider = new PhysicalFileProvider(mediaDirectory),
+        RequestPath = "/images"
+    });
+    app.Use(async (context, next) =>
+    {
+        var logoPath = Path.Combine(localHostDataDirectory, "logo.png");
+        if (context.Request.Path.Equals("/logo.png", StringComparison.OrdinalIgnoreCase) && File.Exists(logoPath))
+        {
+            context.Response.Headers.CacheControl = "no-store";
+            context.Response.ContentType = "image/png";
+            await context.Response.SendFileAsync(logoPath);
+            return;
+        }
+        await next();
+    });
+}
 
 app.UseStaticFiles(new StaticFileOptions
 {
@@ -230,8 +276,6 @@ app.Use(async (context, next) =>
     var shouldApply = context.Request.Method == HttpMethods.Get &&
                       context.Request.Path.StartsWithSegments("/api", StringComparison.OrdinalIgnoreCase);
     var path = context.Request.Path.Value ?? string.Empty;
-    var cacheSeconds = path.StartsWith("/api/reports", StringComparison.OrdinalIgnoreCase) ? 60 : 15;
-
     if (shouldApply)
     {
         context.Response.OnStarting(() =>
@@ -239,7 +283,7 @@ app.Use(async (context, next) =>
             if (context.Response.StatusCode == StatusCodes.Status200OK &&
                 !context.Response.Headers.ContainsKey(HeaderNames.CacheControl))
             {
-                context.Response.Headers.CacheControl = $"public,max-age={cacheSeconds}";
+                context.Response.Headers.CacheControl = "no-store";
             }
             return Task.CompletedTask;
         });
@@ -250,11 +294,29 @@ app.Use(async (context, next) =>
 
 app.MapControllers();
 app.MapHealthChecks("/health");
+app.MapGet("/api/host/info", (IConfiguration configuration) =>
+{
+    var port = configuration.GetValue<int?>("LocalHost:Port") ?? 5268;
+    var addresses = (Environment.GetEnvironmentVariable("RESTAURANTPOS_LAN_ADDRESSES") ?? "")
+        .Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+        .Distinct(StringComparer.OrdinalIgnoreCase)
+        .Select(address => $"http://{address}:{port}/")
+        .ToArray();
+    return Results.Ok(new { addresses });
+}).RequireAuthorization(policy => policy.RequireRole(Roles.Admin));
+if (localHostMode)
+{
+    app.MapPost("/api/host/backup", async (LocalHostBackupService backup, CancellationToken cancellationToken) =>
+    {
+        var path = await backup.CreateBackupAsync(cancellationToken);
+        return Results.Ok(new { path });
+    }).RequireAuthorization(policy => policy.RequireRole(Roles.Admin));
+}
 app.MapFallbackToFile("app/index.html");
 
 await EnsureDatabaseMigratedAsync(app.Services);
 await SeedRolesAsync(app.Services);
-await SeedAdminUserAsync(app.Services);
+await SeedAdminUserAsync(app.Services, builder.Configuration, localHostMode);
 if (app.Environment.IsDevelopment())
 {
     await SeedSampleDataAsync(app.Services);
@@ -301,7 +363,7 @@ static async Task ApplySqlitePragmasAsync(IServiceProvider services)
     await db.Database.ExecuteSqlRawAsync("PRAGMA cache_size=-20000;");
 }
 
-static async Task SeedAdminUserAsync(IServiceProvider services)
+static async Task SeedAdminUserAsync(IServiceProvider services, IConfiguration configuration, bool localHostMode)
 {
     using var scope = services.CreateScope();
     var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
@@ -324,8 +386,20 @@ static async Task SeedAdminUserAsync(IServiceProvider services)
         DisplayName = "Admin"
     };
 
-    var result = await userManager.CreateAsync(adminUser, "admin123");
-    if (result.Succeeded)
+    var password = localHostMode
+        ? Environment.GetEnvironmentVariable("RESTAURANTPOS_BOOTSTRAP_PASSWORD")
+        : configuration["BootstrapAdminPassword"] ?? "admin123";
+    if (string.IsNullOrWhiteSpace(password))
+    {
+        throw new InvalidOperationException("The first local-host start requires an admin password.");
+    }
+
+    var result = await userManager.CreateAsync(adminUser, password);
+    if (!result.Succeeded)
+    {
+        throw new InvalidOperationException("Could not create the admin user: " + string.Join(", ", result.Errors.Select(error => error.Description)));
+    }
+    else
     {
         await userManager.AddToRoleAsync(adminUser, Roles.Admin);
     }

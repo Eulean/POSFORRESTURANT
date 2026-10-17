@@ -14,11 +14,13 @@ public class ShopProfileController : ControllerBase
 {
     private readonly AppDbContext _db;
     private readonly IWebHostEnvironment _env;
+    private readonly IConfiguration _configuration;
 
-    public ShopProfileController(AppDbContext db, IWebHostEnvironment env)
+    public ShopProfileController(AppDbContext db, IWebHostEnvironment env, IConfiguration configuration)
     {
         _db = db;
         _env = env;
+        _configuration = configuration;
     }
 
     [HttpGet]
@@ -73,6 +75,15 @@ public class ShopProfileController : ControllerBase
             return BadRequest("Logo must be a PNG file.");
         }
 
+        var dataDirectory = _configuration["LocalHost:DataDirectory"];
+        if (dataDirectory != null)
+        {
+            Directory.CreateDirectory(dataDirectory);
+            await using var logoStream = System.IO.File.Create(Path.Combine(dataDirectory, "logo.png"));
+            await file.CopyToAsync(logoStream);
+        }
+        else
+        {
         var appRoot = Path.Combine(_env.ContentRootPath, "wwwroot", "app");
         Directory.CreateDirectory(appRoot);
         var appLogoPath = Path.Combine(appRoot, "logo.png");
@@ -87,6 +98,7 @@ public class ShopProfileController : ControllerBase
         await using (var stream = System.IO.File.Create(rootLogoPath))
         {
             await file.CopyToAsync(stream);
+        }
         }
 
         var profile = await _db.ShopProfiles.FirstOrDefaultAsync();
@@ -104,6 +116,11 @@ public class ShopProfileController : ControllerBase
 
     private string? GetLogoUrl()
     {
+        var dataDirectory = _configuration["LocalHost:DataDirectory"];
+        if (dataDirectory != null && System.IO.File.Exists(Path.Combine(dataDirectory, "logo.png")))
+        {
+            return $"/logo.png?v={DateTime.UtcNow:yyyyMMddHHmmss}";
+        }
         var logoPath = Path.Combine(_env.ContentRootPath, "wwwroot", "app", "logo.png");
         if (!System.IO.File.Exists(logoPath))
         {

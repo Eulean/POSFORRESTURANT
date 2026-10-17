@@ -16,10 +16,12 @@ namespace RestaurantPos.Api.Controllers;
 public class OrdersController : ControllerBase
 {
     private readonly AppDbContext _db;
+    private readonly IConfiguration _configuration;
 
-    public OrdersController(AppDbContext db)
+    public OrdersController(AppDbContext db, IConfiguration configuration)
     {
         _db = db;
+        _configuration = configuration;
     }
 
     [HttpGet]
@@ -217,8 +219,14 @@ public class OrdersController : ControllerBase
         return File(pdf, "application/pdf", $"receipt-{order.Id}.pdf");
     }
 
-    private static string? ResolveReceiptLogoPath()
+    private string? ResolveReceiptLogoPath()
     {
+        var dataDirectory = _configuration["LocalHost:DataDirectory"];
+        if (dataDirectory != null)
+        {
+            var localLogo = Path.Combine(dataDirectory, "logo.png");
+            if (System.IO.File.Exists(localLogo)) { return localLogo; }
+        }
         var contentRoot = Directory.GetCurrentDirectory();
         var appLogo = Path.Combine(contentRoot, "wwwroot", "app", "logo.png");
         if (System.IO.File.Exists(appLogo))
