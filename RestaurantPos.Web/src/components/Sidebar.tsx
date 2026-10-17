@@ -23,7 +23,7 @@ export default function Sidebar() {
     <aside className="flex h-full flex-col gap-6 border-r p-6 backdrop-blur bg-[var(--card)]/95 border-[var(--border)]">
       <div className="flex items-center gap-3">
         <img
-          src="/logo.png"
+          src="/logo"
           alt="GALA taste"
           className="h-12 w-12 rounded-full object-cover"
         />

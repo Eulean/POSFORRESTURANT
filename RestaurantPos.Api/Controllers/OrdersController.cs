@@ -224,10 +224,14 @@ public class OrdersController : ControllerBase
         var dataDirectory = _configuration["LocalHost:DataDirectory"];
         if (dataDirectory != null)
         {
+            var localWebpLogo = Path.Combine(dataDirectory, "logo.webp");
+            if (System.IO.File.Exists(localWebpLogo)) { return localWebpLogo; }
             var localLogo = Path.Combine(dataDirectory, "logo.png");
             if (System.IO.File.Exists(localLogo)) { return localLogo; }
         }
         var contentRoot = Directory.GetCurrentDirectory();
+        var appWebpLogo = Path.Combine(contentRoot, "wwwroot", "app", "logo.webp");
+        if (System.IO.File.Exists(appWebpLogo)) { return appWebpLogo; }
         var appLogo = Path.Combine(contentRoot, "wwwroot", "app", "logo.png");
         if (System.IO.File.Exists(appLogo))
         {

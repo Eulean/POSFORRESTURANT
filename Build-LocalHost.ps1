@@ -1,16 +1,19 @@
 param(
-    [string]$OutputDirectory = (Join-Path $PSScriptRoot 'out\RestaurantPos-LocalHost')
+    [string]$OutputDirectory = ''
 )
 
 $ErrorActionPreference = 'Stop'
 $webDirectory = Join-Path $PSScriptRoot 'RestaurantPos.Web'
 $apiProject = Join-Path $PSScriptRoot 'RestaurantPos.Api\RestaurantPos.Api.csproj'
-$resolvedOutput = [System.IO.Path]::GetFullPath($OutputDirectory)
 $outRoot = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot 'out'))
+$temporaryOutput = [string]::IsNullOrWhiteSpace($OutputDirectory)
+if ($temporaryOutput) { $OutputDirectory = Join-Path $outRoot ('.package-' + [Guid]::NewGuid().ToString('N')) }
+$resolvedOutput = [System.IO.Path]::GetFullPath($OutputDirectory)
 if (-not $resolvedOutput.StartsWith($outRoot + [System.IO.Path]::DirectorySeparatorChar, [StringComparison]::OrdinalIgnoreCase)) {
     throw 'OutputDirectory must be inside this repository\out.'
 }
 
+try {
 Write-Host 'Building offline web app...'
 Push-Location $webDirectory
 try {
@@ -40,6 +43,12 @@ foreach ($unusedConfig in @('appsettings.Development.json', 'appsettings.Product
 $zipPath = Join-Path $outRoot 'RestaurantPos-LocalHost.zip'
 Compress-Archive -Path (Join-Path $resolvedOutput '*') -DestinationPath $zipPath -Force
 
-Write-Host "Ready: $resolvedOutput"
+if (-not $temporaryOutput) { Write-Host "Release folder: $resolvedOutput" }
 Write-Host "ZIP for copying: $zipPath"
 Write-Host 'Extract the ZIP on the restaurant laptop, then double-click Start Restaurant POS.cmd.'
+} finally {
+    if ($temporaryOutput -and (Test-Path -LiteralPath $resolvedOutput) -and
+        $resolvedOutput.StartsWith($outRoot + [System.IO.Path]::DirectorySeparatorChar, [StringComparison]::OrdinalIgnoreCase)) {
+        Remove-Item -LiteralPath $resolvedOutput -Recurse -Force
+    }
+}

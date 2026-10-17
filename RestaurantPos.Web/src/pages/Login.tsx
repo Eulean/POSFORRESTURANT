@@ -20,7 +20,7 @@ export default function Login() {
       const response = await login(userName, password)
       const state = location.state as { from?: Location } | null
       const requested = state?.from?.pathname ?? '/'
-      const adminOnly = ['/menu', '/inventory', '/reports', '/admin']
+      const adminOnly = ['/menu', '/inventory', '/reports', '/admin', '/host']
       const canAccessRequested =
         !adminOnly.includes(requested) || response.roles.includes('Admin')
       const fallback = response.roles.includes('Admin') ? '/' : '/orders'
@@ -36,7 +36,7 @@ export default function Login() {
     <div className="flex min-h-screen items-center justify-center bg-[var(--canvas)] px-6">
       <div className="w-full max-w-md rounded-[32px] border border-amber-200/60 bg-white/80 p-8 shadow-lg backdrop-blur">
         <div className="flex items-center gap-3">
-          <img src="/logo.png" alt="GALA taste" className="h-12 w-12 rounded-full object-cover" />
+          <img src="/logo" alt="GALA taste" className="h-12 w-12 rounded-full object-cover" />
           <div>
             <p className="text-xs uppercase tracking-[0.3em] text-amber-600/80">Welcome Back</p>
             <h1 className="mt-1 text-3xl font-semibold text-stone-900">GALA taste</h1>

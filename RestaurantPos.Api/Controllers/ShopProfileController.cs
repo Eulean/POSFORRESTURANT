@@ -63,42 +63,15 @@ public class ShopProfileController : ControllerBase
 
     [HttpPost("logo")]
     [Consumes("multipart/form-data")]
+    [RequestSizeLimit(10 * 1024 * 1024)]
     public async Task<ActionResult<ShopProfileDto>> UploadLogo([FromForm] IFormFile file)
     {
-        if (file.Length == 0)
-        {
-            return BadRequest("Logo file is required.");
-        }
-
-        if (!string.Equals(file.ContentType, "image/png", StringComparison.OrdinalIgnoreCase))
-        {
-            return BadRequest("Logo must be a PNG file.");
-        }
-
         var dataDirectory = _configuration["LocalHost:DataDirectory"];
-        if (dataDirectory != null)
+        var logoRoot = dataDirectory ?? Path.Combine(_env.ContentRootPath, "wwwroot", "app");
+        var logoPath = Path.Combine(logoRoot, "logo.webp");
+        if (!await UploadedImageProcessor.SaveAsWebPAsync(file, logoPath, 512))
         {
-            Directory.CreateDirectory(dataDirectory);
-            await using var logoStream = System.IO.File.Create(Path.Combine(dataDirectory, "logo.png"));
-            await file.CopyToAsync(logoStream);
-        }
-        else
-        {
-        var appRoot = Path.Combine(_env.ContentRootPath, "wwwroot", "app");
-        Directory.CreateDirectory(appRoot);
-        var appLogoPath = Path.Combine(appRoot, "logo.png");
-        await using (var stream = System.IO.File.Create(appLogoPath))
-        {
-            await file.CopyToAsync(stream);
-        }
-
-        var wwwroot = Path.Combine(_env.ContentRootPath, "wwwroot");
-        Directory.CreateDirectory(wwwroot);
-        var rootLogoPath = Path.Combine(wwwroot, "logo.png");
-        await using (var stream = System.IO.File.Create(rootLogoPath))
-        {
-            await file.CopyToAsync(stream);
-        }
+            return BadRequest("Upload a JPEG, PNG, or WebP image smaller than 10 MB and 40 megapixels.");
         }
 
         var profile = await _db.ShopProfiles.FirstOrDefaultAsync();
@@ -117,22 +90,19 @@ public class ShopProfileController : ControllerBase
     private string? GetLogoUrl()
     {
         var dataDirectory = _configuration["LocalHost:DataDirectory"];
-        if (dataDirectory != null && System.IO.File.Exists(Path.Combine(dataDirectory, "logo.png")))
+        if (dataDirectory != null &&
+            (System.IO.File.Exists(Path.Combine(dataDirectory, "logo.webp")) ||
+             System.IO.File.Exists(Path.Combine(dataDirectory, "logo.png"))))
         {
-            return $"/logo.png?v={DateTime.UtcNow:yyyyMMddHHmmss}";
+            return $"/logo?v={DateTime.UtcNow:yyyyMMddHHmmss}";
         }
-        var logoPath = Path.Combine(_env.ContentRootPath, "wwwroot", "app", "logo.png");
-        if (!System.IO.File.Exists(logoPath))
+        var appRoot = Path.Combine(_env.ContentRootPath, "wwwroot", "app");
+        if (System.IO.File.Exists(Path.Combine(appRoot, "logo.webp")) ||
+            System.IO.File.Exists(Path.Combine(appRoot, "logo.png")))
         {
-            logoPath = Path.Combine(_env.ContentRootPath, "wwwroot", "logo.png");
+            return $"/logo?v={DateTime.UtcNow:yyyyMMddHHmmss}";
         }
-
-        if (!System.IO.File.Exists(logoPath))
-        {
-            return null;
-        }
-
-        return $"/logo.png?v={DateTime.UtcNow:yyyyMMddHHmmss}";
+        return null;
     }
 
     private static ShopProfileDto ToDto(ShopProfile profile, string? logoUrl)

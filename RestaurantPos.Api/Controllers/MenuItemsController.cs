@@ -188,7 +188,7 @@ public class MenuItemsController : ControllerBase
     [HttpPost("{id:int}/image")]
     [Authorize(Roles = Roles.Admin)]
     [Consumes("multipart/form-data")]
-    [RequestSizeLimit(5 * 1024 * 1024)]
+    [RequestSizeLimit(10 * 1024 * 1024)]
     public async Task<ActionResult<MenuItemDto>> UploadImage(int id, [FromForm] UploadMenuItemImageRequest request)
     {
         if (request.File == null || request.File.Length == 0)
@@ -202,23 +202,16 @@ public class MenuItemsController : ControllerBase
             return NotFound();
         }
 
-        var extension = Path.GetExtension(request.File.FileName);
-        if (string.IsNullOrWhiteSpace(extension))
-        {
-            extension = ".jpg";
-        }
-        var fileName = $"{Guid.NewGuid():N}{extension}";
+        var fileName = $"{Guid.NewGuid():N}.webp";
         var relativePath = Path.Combine("images", "menu", fileName).Replace("\\", "/");
         var dataDirectory = _configuration["LocalHost:DataDirectory"];
         var absolutePath = dataDirectory == null
             ? Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "images", "menu", fileName)
             : Path.Combine(dataDirectory, "images", "menu", fileName);
 
-        Directory.CreateDirectory(Path.GetDirectoryName(absolutePath)!);
-
-        await using (var stream = new FileStream(absolutePath, FileMode.Create))
+        if (!await UploadedImageProcessor.SaveAsWebPAsync(request.File, absolutePath, 1600))
         {
-            await request.File.CopyToAsync(stream);
+            return BadRequest("Upload a JPEG, PNG, or WebP image smaller than 10 MB and 40 megapixels.");
         }
 
         entity.ImageUrl = $"/{relativePath}";

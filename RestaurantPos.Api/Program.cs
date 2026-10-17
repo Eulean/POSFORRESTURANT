@@ -1,4 +1,6 @@
 using System.Text;
+using System.Net.NetworkInformation;
+using System.Net.Sockets;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.ResponseCompression;
@@ -198,6 +200,36 @@ app.UseResponseCompression();
 app.UseRouting();
 app.UseCors("DefaultCors");
 
+app.Use(async (context, next) =>
+{
+    if (context.Request.Path.Equals("/logo", StringComparison.OrdinalIgnoreCase) ||
+        context.Request.Path.Equals("/logo.png", StringComparison.OrdinalIgnoreCase) ||
+        context.Request.Path.Equals("/logo.webp", StringComparison.OrdinalIgnoreCase))
+    {
+        var appRoot = Path.Combine(app.Environment.ContentRootPath, "wwwroot", "app");
+        var candidates = new[]
+        {
+            localHostDataDirectory == null ? null : Path.Combine(localHostDataDirectory, "logo.webp"),
+            localHostDataDirectory == null ? null : Path.Combine(localHostDataDirectory, "logo.png"),
+            Path.Combine(appRoot, "logo.webp"),
+            Path.Combine(appRoot, "logo.png"),
+            Path.GetFullPath(Path.Combine(app.Environment.ContentRootPath, "..", "RestaurantPos.Web", "public", "logo.png"))
+        };
+        var logoPath = candidates.FirstOrDefault(path => path != null && File.Exists(path));
+        if (logoPath != null)
+        {
+            context.Response.Headers.CacheControl = "no-store";
+            context.Response.ContentType = logoPath.EndsWith(".webp", StringComparison.OrdinalIgnoreCase)
+                ? "image/webp" : "image/png";
+            await context.Response.SendFileAsync(logoPath);
+            return;
+        }
+        context.Response.StatusCode = StatusCodes.Status404NotFound;
+        return;
+    }
+    await next();
+});
+
 if (localHostDataDirectory != null)
 {
     var mediaDirectory = Path.Combine(localHostDataDirectory, "images");
@@ -206,18 +238,6 @@ if (localHostDataDirectory != null)
     {
         FileProvider = new PhysicalFileProvider(mediaDirectory),
         RequestPath = "/images"
-    });
-    app.Use(async (context, next) =>
-    {
-        var logoPath = Path.Combine(localHostDataDirectory, "logo.png");
-        if (context.Request.Path.Equals("/logo.png", StringComparison.OrdinalIgnoreCase) && File.Exists(logoPath))
-        {
-            context.Response.Headers.CacheControl = "no-store";
-            context.Response.ContentType = "image/png";
-            await context.Response.SendFileAsync(logoPath);
-            return;
-        }
-        await next();
     });
 }
 
@@ -297,12 +317,25 @@ app.MapHealthChecks("/health");
 app.MapGet("/api/host/info", (IConfiguration configuration) =>
 {
     var port = configuration.GetValue<int?>("LocalHost:Port") ?? 5268;
+    var activeAddresses = NetworkInterface.GetAllNetworkInterfaces()
+        .Where(network => network.OperationalStatus == OperationalStatus.Up)
+        .SelectMany(network => network.GetIPProperties().UnicastAddresses)
+        .Where(address => address.Address.AddressFamily == AddressFamily.InterNetwork)
+        .Select(address => address.Address.ToString())
+        .ToHashSet(StringComparer.OrdinalIgnoreCase);
     var addresses = (Environment.GetEnvironmentVariable("RESTAURANTPOS_LAN_ADDRESSES") ?? "")
         .Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+        .Where(activeAddresses.Contains)
         .Distinct(StringComparer.OrdinalIgnoreCase)
         .Select(address => $"http://{address}:{port}/")
         .ToArray();
-    return Results.Ok(new { addresses });
+    var networkReady = bool.TryParse(Environment.GetEnvironmentVariable("RESTAURANTPOS_LAN_READY"), out var ready) && ready && addresses.Length > 0;
+    var warning = addresses.Length == 0 && ready
+        ? "The laptop's Wi-Fi address changed. Restart the POS to generate a new QR code."
+        : Environment.GetEnvironmentVariable("RESTAURANTPOS_LAN_WARNING") ?? string.Empty;
+    var networkNames = (Environment.GetEnvironmentVariable("RESTAURANTPOS_NETWORK_NAMES") ?? "")
+        .Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+    return Results.Ok(new { addresses, networkReady, warning, networkNames });
 }).RequireAuthorization(policy => policy.RequireRole(Roles.Admin));
 if (localHostMode)
 {

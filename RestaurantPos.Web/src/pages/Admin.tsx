@@ -49,7 +49,7 @@ export default function Admin() {
             address: profileData.address ?? '',
             phone: profileData.phone ?? ''
           })
-          setLogoUrl(profileData.logoUrl ?? '/logo.png')
+          setLogoUrl(profileData.logoUrl ?? '/logo')
         }
       } catch {
         if (active) setError('Unable to load users.')
@@ -156,15 +156,15 @@ export default function Admin() {
 
   const handleLogoUpload = async (file?: File | null) => {
     if (!file) return
-    if (file.type !== 'image/png') {
-      setError('Logo must be a PNG file.')
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+      setError('Choose a JPEG, PNG, or WebP image for the logo.')
       return
     }
 
     setIsUploadingLogo(true)
     try {
       const saved = await uploadShopLogo(file)
-      setLogoUrl(saved.logoUrl ?? `/logo.png?v=${Date.now()}`)
+      setLogoUrl(saved.logoUrl ?? `/logo?v=${Date.now()}`)
       setError(null)
       addToast('Logo updated.')
     } catch {
@@ -306,7 +306,7 @@ export default function Admin() {
             <div className="mt-2 flex items-center gap-3">
               <div className="h-14 w-14 overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface)]">
                 <img
-                  src={logoUrl ?? '/logo.png'}
+                  src={logoUrl ?? '/logo'}
                   alt="Logo"
                   className="h-full w-full object-cover"
                 />
@@ -315,7 +315,7 @@ export default function Admin() {
                 {isUploadingLogo ? 'Uploading...' : 'Upload Logo'}
                 <input
                   type="file"
-                  accept="image/png"
+                  accept="image/jpeg,image/png,image/webp"
                   className="hidden"
                   onChange={(event) => handleLogoUpload(event.target.files?.[0])}
                   disabled={isUploadingLogo}

@@ -451,7 +451,7 @@ function MenuCard({
           <label className="text-xs uppercase tracking-[0.2em] text-[var(--muted)]">Upload Image</label>
           <input
             type="file"
-            accept="image/*"
+            accept="image/jpeg,image/png,image/webp"
             className="mt-2 w-full rounded-2xl border border-[var(--border)] bg-[var(--card)] px-4 py-2 text-sm text-[var(--muted)] focus:border-[var(--accent)] focus:outline-none"
             onChange={(event) => {
               const file = event.target.files?.[0]
