@@ -25,6 +25,7 @@ export default function Orders() {
   const [selectedItems, setSelectedItems] = useState<OrderCreateItem[]>([])
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [paymentOrderId, setPaymentOrderId] = useState<number | null>(null)
+  const [showKbzPayQrFullScreen, setShowKbzPayQrFullScreen] = useState(false)
   const [kbzPaySettings, setKbzPaySettings] = useState<KbzPaySettings>({ hasQr: false, qrUrl: null })
   const [verifiedInPartnerApp, setVerifiedInPartnerApp] = useState(false)
   const [paymentForm, setPaymentForm] = useState<PaymentCreateRequest>({
@@ -33,6 +34,20 @@ export default function Orders() {
     reference: ''
   })
   const imageUrlFor = (item: MenuItem) => mediaUrl(item.imageUrl)
+
+  useEffect(() => {
+    if (!showKbzPayQrFullScreen) return
+    const previousOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setShowKbzPayQrFullScreen(false)
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => {
+      document.body.style.overflow = previousOverflow
+      window.removeEventListener('keydown', onKeyDown)
+    }
+  }, [showKbzPayQrFullScreen])
 
   useEffect(() => {
     let active = true
@@ -147,6 +162,7 @@ export default function Orders() {
     setPaymentOrderId(order.id)
     setPaymentForm({ amount: order.totalAmount, method: order.status === 'PaymentPending' ? 'KBZPay' : 'Cash', reference: '' })
     setVerifiedInPartnerApp(false)
+    setShowKbzPayQrFullScreen(order.status === 'PaymentPending' && !!kbzPaySettings.qrUrl)
   }
 
   const handleStartKbzPay = async () => {
@@ -155,6 +171,7 @@ export default function Orders() {
     try {
       await startKbzPay(paymentOrderId)
       setOrders((prev) => prev.map((order) => order.id === paymentOrderId ? { ...order, status: 'PaymentPending' } : order))
+      setShowKbzPayQrFullScreen(true)
       setError(null)
     } catch {
       setError('Unable to start KBZPay checkout. Check that the QR is configured and the order is still unpaid.')
@@ -172,6 +189,7 @@ export default function Orders() {
       setOrders((prev) => prev.map((order) => order.id === paymentOrderId ? { ...order, status: 'Served' } : order))
       setPaymentForm((prev) => ({ ...prev, method: 'Cash', reference: '' }))
       setVerifiedInPartnerApp(false)
+      setShowKbzPayQrFullScreen(false)
       setError(null)
     } catch {
       setError('Unable to cancel KBZPay checkout. Refresh the order and try again.')
@@ -219,6 +237,7 @@ export default function Orders() {
         )
       )
       setPaymentOrderId(null)
+      setShowKbzPayQrFullScreen(false)
       setPaymentForm({ amount: 0, method: 'Cash', reference: '' })
       setVerifiedInPartnerApp(false)
       setError(null)
@@ -489,7 +508,9 @@ export default function Orders() {
               {paymentForm.method === 'KBZPay' && (
                 <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-center">
                   {kbzPaySettings.qrUrl && kbzPayPending ? (
-                    <img src={mediaUrl(kbzPaySettings.qrUrl)} alt="Restaurant KBZPay merchant QR" className="mx-auto h-56 w-56 bg-white object-contain p-2" />
+                    <button className="btn btn-primary btn-soft btn-md" onClick={() => setShowKbzPayQrFullScreen(true)}>
+                      Show QR full screen
+                    </button>
                   ) : kbzPayPending ? (
                     <p className="text-sm text-amber-900">The QR is unavailable. Ask an admin to restore it before accepting payment.</p>
                   ) : (
@@ -497,7 +518,7 @@ export default function Orders() {
                       {isSubmitting ? 'Starting...' : 'Show KBZPay QR'}
                     </button>
                   )}
-                  <p className="mt-3 text-sm text-stone-700">Customer pays MMK {paymentForm.amount.toLocaleString()}. Check the incoming payment and amount in the restaurant's KBZPay Partner app.</p>
+                  <p className="mt-3 text-sm text-stone-700">Customer pays MMK {paymentForm.amount.toLocaleString()}. After scanning, check the incoming payment and amount in the restaurant's KBZPay Partner app.</p>
                   {kbzPayPending && (
                     <button className="mt-3 text-sm text-amber-800 underline" onClick={handleCancelKbzPay} disabled={isSubmitting}>
                       Cancel KBZPay request and choose another method
@@ -529,7 +550,10 @@ export default function Orders() {
             <div className="mt-6 flex gap-2">
               <button
                 className="flex-1 btn btn-ghost btn-soft btn-sm"
-                onClick={() => setPaymentOrderId(null)}
+                onClick={() => {
+                  setShowKbzPayQrFullScreen(false)
+                  setPaymentOrderId(null)
+                }}
               >
                 Close
               </button>
@@ -541,6 +565,29 @@ export default function Orders() {
               </button>
             </div>
           </div>
+        </div>
+      )}
+
+      {showKbzPayQrFullScreen && paymentOrderId && kbzPayPending && kbzPaySettings.qrUrl && (
+        <div className="fixed inset-0 z-[60] flex min-h-[100dvh] flex-col items-center justify-center overflow-y-auto bg-white px-4 py-5 text-center text-stone-900" role="dialog" aria-modal="true" aria-label="Scan KBZPay QR for payment">
+          <p className="text-sm font-semibold uppercase tracking-[0.2em] text-amber-700">Pay with KBZPay</p>
+          <p className="mt-2 text-3xl font-bold sm:text-4xl">MMK {paymentForm.amount.toLocaleString()}</p>
+          <p className="mt-1 text-sm text-stone-500">Order #{paymentOrderId}</p>
+          <img
+            src={mediaUrl(kbzPaySettings.qrUrl)}
+            alt="Scan the restaurant KBZPay merchant QR to pay"
+            className="mt-4 max-w-full bg-white object-contain"
+            style={{ width: 'min(92vw, calc(100dvh - 12rem), 720px)', height: 'min(92vw, calc(100dvh - 12rem), 720px)' }}
+          />
+          <p className="mt-3 text-sm text-stone-600">Scan with KBZPay and check the amount before paying.</p>
+          <button
+            type="button"
+            autoFocus
+            className="mt-4 rounded-2xl bg-[var(--accent)] px-6 py-3 text-sm font-semibold text-white shadow-sm"
+            onClick={() => setShowKbzPayQrFullScreen(false)}
+          >
+            Done scanning · Verify payment
+          </button>
         </div>
       )}
     </div>
