@@ -16,46 +16,30 @@ try {
 
     if (-not $Tag) { $Tag = "local-host-$(Get-Date -Format 'yyyyMMdd-HHmmss')-$($commit.Substring(0, 7))" }
     if ($Tag -notmatch '^[A-Za-z0-9._-]+$') { throw 'Release tag may contain only letters, numbers, periods, underscores, and hyphens.' }
+    if (-not (Get-Command gh -ErrorAction SilentlyContinue)) { throw 'Install and sign in to GitHub CLI (gh) before publishing.' }
+    gh auth status 2>$null | Out-Null
+    if ($LASTEXITCODE -ne 0) { throw 'Sign in to GitHub CLI with gh auth login before publishing.' }
 
     & (Join-Path $PSScriptRoot 'Build-LocalHost.ps1')
     if (-not (Test-Path -LiteralPath $zipPath -PathType Leaf)) { throw 'The build did not create a ZIP.' }
     $zip = Get-Item -LiteralPath $zipPath
     $hash = (Get-FileHash -LiteralPath $zipPath -Algorithm SHA256).Hash.ToLowerInvariant()
 
-    $credentialLines = "protocol=https`nhost=github.com`n`n" | git credential fill
-    $passwordLine = $credentialLines | Where-Object { $_ -like 'password=*' } | Select-Object -First 1
-    if (-not $passwordLine) { throw 'Sign in to GitHub through Git Credential Manager first.' }
-    $token = $passwordLine.Substring(9)
-    $curlConfig = "header = `"Authorization: Bearer $token`"`nheader = `"Accept: application/vnd.github+json`"`nheader = `"X-GitHub-Api-Version: 2022-11-28`"`n"
-
     $notes = "Windows x64 offline LAN host. Extract the ZIP, then run Start Restaurant POS.cmd. Use only on a trusted Private Wi-Fi; never forward port 5268 to the internet.`n`nSHA-256: $hash"
-    $body = @{
-        tag_name = $Tag
-        target_commitish = $commit
-        name = "Restaurant POS Local Host $Tag"
-        body = $notes
-        draft = $true
-        prerelease = $false
-    } | ConvertTo-Json -Compress
-    $releaseJson = $curlConfig | curl.exe -sS -f --max-time 30 --config - -H 'Content-Type: application/json' --data-raw $body "https://api.github.com/repos/$repo/releases"
-    if ($LASTEXITCODE -ne 0) { throw 'GitHub could not create the draft release.' }
-    $release = $releaseJson | ConvertFrom-Json
-    if (-not $release.id) { throw 'GitHub returned an invalid release response.' }
+    gh release create $Tag "$zipPath#RestaurantPos-LocalHost.zip" --repo $repo --target main --title "Restaurant POS Local Host $Tag" --notes $notes --draft | Out-Null
+    if ($LASTEXITCODE -ne 0) { throw 'GitHub could not create the draft release and upload the ZIP.' }
 
-    $uploadUrl = "https://uploads.github.com/repos/$repo/releases/$($release.id)/assets?name=RestaurantPos-LocalHost.zip"
-    $assetJson = $curlConfig | curl.exe -sS -f --max-time 300 --config - -H 'Content-Type: application/zip' --data-binary "@$zipPath" $uploadUrl
-    if ($LASTEXITCODE -ne 0) { throw "ZIP upload failed; draft release $($release.id) remains on GitHub." }
-    $asset = $assetJson | ConvertFrom-Json
-    if ($asset.size -ne $zip.Length) { throw "Uploaded ZIP size mismatch; draft release $($release.id) remains on GitHub." }
+    $release = gh release view $Tag --repo $repo --json assets,url | ConvertFrom-Json
+    if ($LASTEXITCODE -ne 0 -or $release.assets.Count -ne 1 -or $release.assets[0].size -ne $zip.Length) {
+        throw "Uploaded ZIP size mismatch; draft release $Tag remains on GitHub."
+    }
 
-    $publishJson = $curlConfig | curl.exe -sS -f --max-time 30 --config - -X PATCH -H 'Content-Type: application/json' --data-raw '{"draft":false}' "https://api.github.com/repos/$repo/releases/$($release.id)"
-    if ($LASTEXITCODE -ne 0) { throw "The ZIP uploaded, but draft release $($release.id) could not be published." }
-    $published = $publishJson | ConvertFrom-Json
-    Write-Host "Release: $($published.html_url)"
-    Write-Host "ZIP: $($asset.browser_download_url)"
+    gh release edit $Tag --repo $repo --draft=false | Out-Null
+    if ($LASTEXITCODE -ne 0) { throw "The ZIP uploaded, but draft release $Tag could not be published." }
+    $published = gh release view $Tag --repo $repo --json url,assets | ConvertFrom-Json
+    Write-Host "Release: $($published.url)"
+    Write-Host "ZIP: $($published.assets[0].url)"
     Write-Host "SHA-256: $hash"
 } finally {
-    $token = $null
-    $curlConfig = $null
     Pop-Location
 }

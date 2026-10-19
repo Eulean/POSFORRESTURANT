@@ -20,7 +20,7 @@ The database, uploaded images, logo, and backups live in `%LOCALAPPDATA%\Restaur
 
 To build the folder from source, run `powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Build-LocalHost.ps1` from the repository root on a Windows development machine with Node/npm and the .NET 8 SDK. The resulting package is self-contained: the restaurant laptop does not need these development tools. This step implements **PC hosting with phone/browser clients**, not hosting from an Android or iOS phone.
 
-To publish a new downloadable ZIP, run `powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Publish-LocalHostRelease.ps1` on a Windows development machine signed in to GitHub through Git Credential Manager. It rebuilds the ZIP and uploads it as a new versioned entry on the repository's **Releases** page. Run it only after your latest code is committed and pushed to `main`. The restaurant laptop only downloads the ZIP; it never needs the development tools.
+To publish a new downloadable ZIP, install GitHub CLI (`gh`) and sign in with `gh auth login`, then run `powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Publish-LocalHostRelease.ps1` on a Windows development machine. It rebuilds the ZIP and uploads it as a new versioned entry on the repository's **Releases** page. Run it only after your latest code is committed and pushed to `main`. The restaurant laptop only downloads the ZIP; it never needs the development tools.
 
 Features:
 
