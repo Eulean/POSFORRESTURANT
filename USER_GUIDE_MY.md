@@ -47,6 +47,7 @@ Wi-Fi သို့မဟုတ် laptop IP ပြောင်းသွားပ
 ## ၅။ စတင်ပြင်ဆင်ရန် အကြံပြုအစီအစဉ်
 
 1. `Admin` → `Shop Location` တွင် ဆိုင်အမည်၊ ဖုန်း၊ လိပ်စာ၊ logo ထည့်ပါ။ Receipt/printout တွင် အသုံးပြုမည်။ `Save Location` နှိပ်ပါ။ Logo အတွက် `Upload Logo` ကို သီးသန့်နှိပ်ပါ။
+   KBZPay လက်ခံလိုပါက ဆိုင်၏ တရားဝင် KBZPay merchant account နှင့် QR ပုံကို ရယူပြီး `Admin` → `KBZPay merchant QR` တွင် `Upload QR` နှိပ်ပါ။ တင်ပြီးနောက် KBZPay ဖြင့် စမ်း scan လုပ်၍ ဆိုင်အမည်မှန်ကြောင်း စစ်ပါ။ ဆိုင်၏ KBZPay Partner app ထဲတွင် ငွေဝင်မှု စစ်နိုင်မည့်သူကိုလည်း သတ်မှတ်ပါ။
 2. `Admin` → `Create User` တွင် Waiter/Cashier account များ ဖန်တီးပါ။
 3. `Tables` → စားပွဲအမည်နှင့် `Seats` (ထိုင်ခုံအရေအတွက်) ထည့်ပြီး `Add Table` နှိပ်ပါ။
 4. `Menu` → `Categories` တွင် အစားအသောက်အုပ်စုများ ထည့်ပါ။ ထို့နောက် `New Menu Item` တွင် ဟင်းအမည်၊ ဖော်ပြချက်၊ MMK ဈေးနှုန်း၊ category နှင့် `Active` ကို သတ်မှတ်ပြီး `Save Menu Item` နှိပ်ပါ။ ဥပမာ ၅,၀၀၀ ကျပ်ဆို `5000` ထည့်ပါ။
@@ -77,13 +78,15 @@ Admin သာ ဝင်နိုင်သည်။ `Categories` တွင် အ�
 ### `Orders` — Order ဖန်တီးခြင်းမှ ငွေရှင်းခြင်းအထိ
 
 1. Waiter သို့မဟုတ် Admin က `Create Order` အပိုင်းတွင် `Table` ရွေးပါ။ `Add Items` တွင် ဟင်းလျာများနှိပ်ပါ။ `Selected` အောက်ရှိ `+`/`-` ဖြင့် အရေအတွက် ပြင်ပါ။ `Estimated total` ကို စစ်ပြီး `Create Order` နှိပ်ပါ။
-2. Order status အစဉ်သည် `Open` → `InProgress` → `Ready` → `Served` → `Paid` → `Closed` ဖြစ်သည်။ `Advance` သည် နောက်အဆင့်သို့ ရွှေ့သည်။ `Cancel` သည် order ကို ပယ်ဖျက်သည်။ Status မမှားစေရန် တာဝန်ရှိသူကသာ ပြောင်းပါ။
-3. Cashier/Admin က `Served` order တွင် `Pay` နှိပ်ပါ။ `Amount` ကို order စုစုပေါင်းနှင့် **တိတိကျကျတိုက်စစ်**၊ `Method` (`Cash`, `Card`, `Mobile`) ရွေး၊ လိုပါက `Reference` (transaction ID စသည်) ထည့်ပြီး `Confirm Payment` နှိပ်ပါ။ လက်ရှိ UI သည် ငွေပမာဏ တစ်စိတ်တစ်ပိုင်းသာ ထည့်ထားလျှင်လည်း order ကို ပိတ်နိုင်သောကြောင့် ငွေတကယ်ရပြီး ပမာဏပြည့်မပြည့်ကို အတည်ပြုမှ ခလုတ်နှိပ်ပါ။ အောင်မြင်လျှင် order ပိတ်ပြီး စားပွဲ Available ပြန်ဖြစ်သည်။
-4. `Paid`/`Closed` order တွင် `Receipt` နှိပ်၍ PDF download လုပ်နိုင်ပြီး `Print` နှိပ်၍ browser print preview ဖွင့်နိုင်သည်။ ဖုန်းပေါ် print လုပ်ခြင်းသည် browser/ပရင်တာစီစဉ်ထားမှုအပေါ် မူတည်သည်။
+2. Order status အစဉ်သည် `Open` → `InProgress` → `Ready` → `Served` ဖြစ်သည်။ `Advance` ဖြင့် `Served` အထိသာ ရွှေ့နိုင်သည်။ ငွေရှင်းပြီးမှ `Closed` ဖြစ်မည်။ `Cancel` သည် ငွေမရှင်းရသေးသော order ကို ပယ်ဖျက်သည်။
+3. Cashier/Admin က `Served` order တွင် `Pay` နှိပ်ပါ။ `Cash`, `Card`, `Mobile` အတွက် ငွေတကယ်ရရှိကြောင်း စစ်ပြီး `Confirm Payment` နှိပ်ပါ။ POS က order စုစုပေါင်းငွေပမာဏကိုသာ လက်ခံသည်။ အောင်မြင်လျှင် payment record သိမ်း၊ order ပိတ်၊ စားပွဲ Available ပြန်ဖြစ်သည်။
+4. KBZPay အတွက် `Method` တွင် `KBZPay` ရွေးပြီး `Show KBZPay QR` နှိပ်ပါ။ Customer ကို QR ပုံနှင့် MMK ငွေပမာဏ ပြပါ။ Order သည် `PaymentPending` ဖြစ်ပြီး ငွေရပြီးဟု မမှတ်သေးပါ။ Customer ငွေလွှဲပြီးနောက် ဆိုင်၏ **KBZPay Partner app** ထဲတွင် အဝင်ငွေလွှဲ အောင်မြင်မှုနှင့် ပမာဏတိတိကျကျကို စစ်ပါ။ Customer ပြသသော screenshot ကိုသာ မယုံပါနှင့်။ Partner app မှ transaction reference ကို `KBZPay transaction reference` တွင် ထည့်၊ စစ်ပြီးကြောင်း checkbox ကို ရွေးကာ `Confirm KBZPay payment` နှိပ်ပါ။ ထိုအခါမှ payment သိမ်းပြီး order ပိတ်မည်။
+5. Customer မပေးချေတော့လျှင် `Cancel KBZPay request and choose another method` နှိပ်၍ `Served` သို့ ပြန်သွားနိုင်သည်။ Payment modal ကို `Close` နှိပ်၍ ပိတ်လိုက်ရုံဖြင့် pending order မပျောက်ပါ။ နောက်မှ `Resume KBZPay` ဖြင့် ပြန်ဖွင့်နိုင်သည်။
+6. `Paid`/`Closed` order တွင် `Receipt` နှိပ်၍ PDF download လုပ်နိုင်ပြီး `Print` နှိပ်၍ browser print preview ဖွင့်နိုင်သည်။ ဖုန်းပေါ် print လုပ်ခြင်းသည် browser/ပရင်တာစီစဉ်ထားမှုအပေါ် မူတည်သည်။
 
 `Current Orders` အကွက်တွင် နောက်ဆုံး order အချို့နှင့် လုပ်ဆောင်ရန်ခလုတ်များကို မြင်ရသည်။ အောက်ပိုင်း status အုပ်စုများတွင် order စုစုပေါင်းကို ကြည့်ပါ။ Cashier account ဖြင့် `Create Order` ခလုတ်ကို မြင်ရနိုင်သော်လည်း server က ခွင့်မပြုသောကြောင့် Waiter/Admin account ကို သုံးပါ။
 
-**ငွေမရသေးဘဲ `Advance` ဖြင့် `Paid`/`Closed` သို့ မရွှေ့ပါနှင့်။** Status ပြောင်းခြင်းသည် ငွေပေးချေမှု record ဖန်တီးခြင်းမဟုတ်ပါ။ `Served` မှ `Pay` လမ်းကြောင်းကိုသာ သုံးပါ။
+**KBZPay QR ပြခြင်းတစ်ခုတည်းဖြင့် ငွေမရသေးပါ။** POS သည် KBZPay gateway နှင့် မချိတ်ဆက်သေးသောကြောင့် အလိုအလျောက် အတည်မပြုနိုင်ပါ။ POS host ၏ အင်တာနက်ပြတ်လျှင်လည်း local Wi-Fi မှ order နှင့် QR ပုံကို သုံးနိုင်သော်လည်း Customer ၏ KBZPay ငွေလွှဲခြင်းနှင့် Partner app တွင် အတည်ပြုခြင်းအတွက် payment network လိုအပ်သည်။ မစစ်နိုင်သေးပါက order ကို `PaymentPending` ထားပါ။
 
 ### `Kitchen` — မီးဖိုဆောင်အလုပ်စာရင်း
 

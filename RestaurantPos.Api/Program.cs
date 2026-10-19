@@ -44,6 +44,7 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddHealthChecks();
 builder.Services.AddMemoryCache();
+builder.Services.AddSingleton<KbzPayQrStore>();
 if (localHostMode)
 {
     builder.Services.AddSingleton<LocalHostBackupService>();

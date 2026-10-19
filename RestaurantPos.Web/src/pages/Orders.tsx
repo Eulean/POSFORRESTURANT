@@ -3,13 +3,15 @@ import { createOrder, fetchOrderReceipt, fetchOrders, updateOrderStatus } from '
 import { fetchTables } from '../api/tables'
 import { fetchMenuItems } from '../api/menu'
 import { addPayment } from '../api/payments'
+import { cancelKbzPay, confirmKbzPay, fetchKbzPaySettings, startKbzPay } from '../api/kbzpay'
+import type { KbzPaySettings } from '../api/kbzpay'
 import type { MenuItem } from '../types/api'
 import type { DiningTable, Order, OrderCreateItem } from '../types/orders'
 import type { PaymentCreateRequest } from '../types/payments'
 import { useAuth } from '../context/AuthContext'
 import { mediaUrl } from '../api/config'
 
-const statusFlow = ['Open', 'InProgress', 'Ready', 'Served', 'Paid', 'Closed']
+const statusFlow = ['Open', 'InProgress', 'Ready', 'Served']
 
 export default function Orders() {
   const { roles } = useAuth()
@@ -23,6 +25,8 @@ export default function Orders() {
   const [selectedItems, setSelectedItems] = useState<OrderCreateItem[]>([])
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [paymentOrderId, setPaymentOrderId] = useState<number | null>(null)
+  const [kbzPaySettings, setKbzPaySettings] = useState<KbzPaySettings>({ hasQr: false, qrUrl: null })
+  const [verifiedInPartnerApp, setVerifiedInPartnerApp] = useState(false)
   const [paymentForm, setPaymentForm] = useState<PaymentCreateRequest>({
     amount: 0,
     method: 'Cash',
@@ -35,15 +39,17 @@ export default function Orders() {
     const load = async (showLoader: boolean) => {
       if (showLoader) setIsLoading(true)
       try {
-        const [ordersData, tablesData, menuData] = await Promise.all([
+        const [ordersData, tablesData, menuData, kbzSettings] = await Promise.all([
           fetchOrders(),
           fetchTables(),
-          fetchMenuItems()
+          fetchMenuItems(),
+          isCashier ? fetchKbzPaySettings() : Promise.resolve(null)
         ])
         if (!active) return
         setOrders(ordersData)
         setTables(tablesData)
         setMenuItems(menuData)
+        if (kbzSettings) setKbzPaySettings(kbzSettings)
         setError(null)
       } catch {
         if (active) setError('Unable to load orders.')
@@ -61,7 +67,7 @@ export default function Orders() {
       active = false
       clearInterval(timer)
     }
-  }, [])
+  }, [isCashier])
 
   const grouped = useMemo(() => {
     const groups: Record<string, Order[]> = {
@@ -69,6 +75,7 @@ export default function Orders() {
       InProgress: [],
       Ready: [],
       Served: [],
+      PaymentPending: [],
       Paid: [],
       Closed: [],
       Cancelled: []
@@ -138,7 +145,39 @@ export default function Orders() {
   const handleOpenPayment = (order: Order) => {
     if (!isCashier) return
     setPaymentOrderId(order.id)
-    setPaymentForm({ amount: order.totalAmount, method: 'Cash', reference: '' })
+    setPaymentForm({ amount: order.totalAmount, method: order.status === 'PaymentPending' ? 'KBZPay' : 'Cash', reference: '' })
+    setVerifiedInPartnerApp(false)
+  }
+
+  const handleStartKbzPay = async () => {
+    if (!paymentOrderId) return
+    setIsSubmitting(true)
+    try {
+      await startKbzPay(paymentOrderId)
+      setOrders((prev) => prev.map((order) => order.id === paymentOrderId ? { ...order, status: 'PaymentPending' } : order))
+      setError(null)
+    } catch {
+      setError('Unable to start KBZPay checkout. Check that the QR is configured and the order is still unpaid.')
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  const handleCancelKbzPay = async () => {
+    if (!paymentOrderId) return
+    if (!window.confirm('Cancel only if KBZPay Partner shows no successful payment for this order. Continue?')) return
+    setIsSubmitting(true)
+    try {
+      await cancelKbzPay(paymentOrderId)
+      setOrders((prev) => prev.map((order) => order.id === paymentOrderId ? { ...order, status: 'Served' } : order))
+      setPaymentForm((prev) => ({ ...prev, method: 'Cash', reference: '' }))
+      setVerifiedInPartnerApp(false)
+      setError(null)
+    } catch {
+      setError('Unable to cancel KBZPay checkout. Refresh the order and try again.')
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   const handleReceipt = async (order: Order) => {
@@ -159,12 +198,19 @@ export default function Orders() {
     if (!paymentOrderId || !isCashier) return
     setIsSubmitting(true)
     try {
-      await addPayment(paymentOrderId, {
-        amount: paymentForm.amount,
-        method: paymentForm.method,
-        reference: paymentForm.reference?.trim() || null
-      })
-      await updateOrderStatus(paymentOrderId, { status: 'Closed' })
+      if (paymentForm.method === 'KBZPay') {
+        if (!verifiedInPartnerApp || !paymentForm.reference?.trim()) {
+          setError('Verify the payment in KBZPay Partner and enter its transaction reference.')
+          return
+        }
+        await confirmKbzPay(paymentOrderId, paymentForm.reference.trim())
+      } else {
+        await addPayment(paymentOrderId, {
+          amount: paymentForm.amount,
+          method: paymentForm.method,
+          reference: paymentForm.reference?.trim() || null
+        })
+      }
       setOrders((prev) =>
         prev.map((order) =>
           order.id === paymentOrderId
@@ -174,12 +220,17 @@ export default function Orders() {
       )
       setPaymentOrderId(null)
       setPaymentForm({ amount: 0, method: 'Cash', reference: '' })
+      setVerifiedInPartnerApp(false)
+      setError(null)
     } catch {
-      setError('Payment failed. Try again.')
+      setError('Payment could not be confirmed. Refresh the order before retrying to avoid a duplicate record.')
     } finally {
       setIsSubmitting(false)
     }
   }
+
+  const paymentOrder = orders.find((order) => order.id === paymentOrderId)
+  const kbzPayPending = paymentOrder?.status === 'PaymentPending'
 
   const selectedSummary = useMemo(() => {
     return selectedItems
@@ -326,7 +377,7 @@ export default function Orders() {
                   <p className="text-xs text-stone-500">{order.tableName} · {order.items.length} items</p>
                   <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
                     <span className="rounded-full bg-amber-100 px-3 py-1 text-amber-800">{order.status}</span>
-                    {order.status !== 'Cancelled' && order.status !== 'Closed' && (
+                    {statusFlow.slice(0, -1).includes(order.status) && (
                       <button
                         className="rounded-full border border-amber-200 px-3 py-1 text-amber-700"
                         onClick={() => handleAdvanceStatus(order)}
@@ -334,7 +385,7 @@ export default function Orders() {
                         Advance
                       </button>
                     )}
-                    {order.status !== 'Cancelled' && order.status !== 'Closed' && (
+                    {statusFlow.includes(order.status) && (
                       <button
                         className="rounded-full border border-rose-200 px-3 py-1 text-rose-700"
                         onClick={() => handleCancelOrder(order)}
@@ -372,12 +423,12 @@ export default function Orders() {
                         </button>
                       </div>
                     )}
-                    {order.status === 'Served' && isCashier && (
+                    {['Served', 'PaymentPending'].includes(order.status) && isCashier && (
                       <button
                         className="btn btn-ghost btn-pill btn-xs"
                         onClick={() => handleOpenPayment(order)}
                       >
-                        Pay
+                        {order.status === 'PaymentPending' ? 'Resume KBZPay' : 'Pay'}
                       </button>
                     )}
                   </div>
@@ -412,26 +463,19 @@ export default function Orders() {
       {paymentOrderId && isCashier && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
           <div className="w-full max-w-md rounded-3xl bg-white p-6 shadow-xl">
-            <h4 className="text-lg font-semibold text-stone-900">Capture Payment</h4>
+            <h4 className="text-lg font-semibold text-stone-900">{kbzPayPending ? 'Awaiting KBZPay confirmation' : 'Capture Payment'}</h4>
             <p className="mt-1 text-sm text-stone-500">Order #{paymentOrderId}</p>
             <div className="mt-4 space-y-3">
               <div>
                 <label className="text-xs uppercase tracking-[0.2em] text-stone-500">Amount</label>
-                <input
-                  type="number"
-                  step="0.01"
-                  className="mt-2 w-full rounded-2xl border border-[var(--border)] bg-[var(--card)] px-4 py-3 text-sm text-[var(--ink)] focus:border-[var(--accent)] focus:outline-none"
-                  value={paymentForm.amount}
-                  onChange={(event) =>
-                    setPaymentForm((prev) => ({ ...prev, amount: Number(event.target.value) }))
-                  }
-                />
+                <p className="mt-2 text-xl font-semibold text-stone-900">MMK {paymentForm.amount.toLocaleString()}</p>
               </div>
               <div>
                 <label className="text-xs uppercase tracking-[0.2em] text-stone-500">Method</label>
                 <select
                   className="mt-2 w-full rounded-2xl border border-[var(--border)] bg-[var(--card)] px-4 py-3 text-sm text-[var(--ink)] focus:border-[var(--accent)] focus:outline-none"
                   value={paymentForm.method}
+                  disabled={kbzPayPending}
                   onChange={(event) =>
                     setPaymentForm((prev) => ({ ...prev, method: event.target.value }))
                   }
@@ -439,35 +483,61 @@ export default function Orders() {
                   <option value="Cash">Cash</option>
                   <option value="Card">Card</option>
                   <option value="Mobile">Mobile</option>
+                  <option value="KBZPay" disabled={!kbzPaySettings.hasQr}>KBZPay {kbzPaySettings.hasQr ? '' : '(admin QR needed)'}</option>
                 </select>
               </div>
+              {paymentForm.method === 'KBZPay' && (
+                <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-center">
+                  {kbzPaySettings.qrUrl && kbzPayPending ? (
+                    <img src={mediaUrl(kbzPaySettings.qrUrl)} alt="Restaurant KBZPay merchant QR" className="mx-auto h-56 w-56 bg-white object-contain p-2" />
+                  ) : kbzPayPending ? (
+                    <p className="text-sm text-amber-900">The QR is unavailable. Ask an admin to restore it before accepting payment.</p>
+                  ) : (
+                    <button className="btn btn-primary btn-soft btn-md" onClick={handleStartKbzPay} disabled={isSubmitting}>
+                      {isSubmitting ? 'Starting...' : 'Show KBZPay QR'}
+                    </button>
+                  )}
+                  <p className="mt-3 text-sm text-stone-700">Customer pays MMK {paymentForm.amount.toLocaleString()}. Check the incoming payment and amount in the restaurant's KBZPay Partner app.</p>
+                  {kbzPayPending && (
+                    <button className="mt-3 text-sm text-amber-800 underline" onClick={handleCancelKbzPay} disabled={isSubmitting}>
+                      Cancel KBZPay request and choose another method
+                    </button>
+                  )}
+                </div>
+              )}
               <div>
-                <label className="text-xs uppercase tracking-[0.2em] text-stone-500">Reference</label>
+                <label className="text-xs uppercase tracking-[0.2em] text-stone-500">{paymentForm.method === 'KBZPay' ? 'KBZPay transaction reference' : 'Reference'}</label>
                 <input
                   className="mt-2 w-full rounded-2xl border border-[var(--border)] bg-[var(--card)] px-4 py-3 text-sm text-[var(--ink)] focus:border-[var(--accent)] focus:outline-none"
                   value={paymentForm.reference ?? ''}
                   onChange={(event) =>
                     setPaymentForm((prev) => ({ ...prev, reference: event.target.value }))
                   }
-                  placeholder="Receipt or last 4"
+                  placeholder={paymentForm.method === 'KBZPay' ? 'From KBZPay Partner' : 'Receipt or last 4'}
                 />
                 <p className="mt-1 text-xs text-stone-500">
-                  Optional. Use card last 4 digits, mobile transfer ID, or receipt number.
+                  {paymentForm.method === 'KBZPay' ? 'Required. Copy from the successful incoming transaction, not a customer screenshot.' : 'Optional. Use card last 4 digits, mobile transfer ID, or receipt number.'}
                 </p>
               </div>
+              {paymentForm.method === 'KBZPay' && kbzPayPending && (
+                <label className="flex items-start gap-3 text-sm text-stone-700">
+                  <input type="checkbox" checked={verifiedInPartnerApp} onChange={(event) => setVerifiedInPartnerApp(event.target.checked)} className="mt-1" />
+                  I verified the successful payment and exact amount in the restaurant's KBZPay Partner app.
+                </label>
+              )}
             </div>
             <div className="mt-6 flex gap-2">
               <button
                 className="flex-1 btn btn-ghost btn-soft btn-sm"
                 onClick={() => setPaymentOrderId(null)}
               >
-                Cancel
+                Close
               </button>
               <button
                 className="flex-1 rounded-2xl bg-[var(--accent)] px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-[var(--accent-strong)]"
                 onClick={handleSubmitPayment}
-                disabled={isSubmitting}                data-loading={isSubmitting}              >
-                {isSubmitting ? 'Processing...' : 'Confirm Payment'}
+                disabled={isSubmitting || (paymentForm.method === 'KBZPay' && (!kbzPayPending || !verifiedInPartnerApp || !paymentForm.reference?.trim()))} data-loading={isSubmitting}>
+                {isSubmitting ? 'Processing...' : paymentForm.method === 'KBZPay' ? 'Confirm KBZPay payment' : 'Confirm Payment'}
               </button>
             </div>
           </div>

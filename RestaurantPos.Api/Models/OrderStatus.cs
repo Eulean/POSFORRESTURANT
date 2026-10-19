@@ -8,5 +8,6 @@ public enum OrderStatus
     Served = 4,
     Paid = 5,
     Closed = 6,
-    Cancelled = 7
+    Cancelled = 7,
+    PaymentPending = 8
 }

@@ -46,7 +46,7 @@ public sealed class LocalHostBackupService : BackgroundService
                 using (var archive = ZipFile.Open(backupPath, ZipArchiveMode.Create))
                 {
                     archive.CreateEntryFromFile(snapshotPath, "restaurantpos.db");
-                    foreach (var name in new[] { "logo.webp", "logo.png" })
+                    foreach (var name in new[] { "logo.webp", "logo.png", "kbzpay-qr.png" })
                     {
                         var logoPath = Path.Combine(dataDirectory, name);
                         if (File.Exists(logoPath)) { archive.CreateEntryFromFile(logoPath, name); }

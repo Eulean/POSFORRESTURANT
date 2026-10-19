@@ -27,7 +27,7 @@ Features:
 - Auth + role-based access (Admin, Waiter, Cashier)
 - Menu with images, categories, ingredients
 - Orders flow + kitchen screen
-- Payments + receipts (PDF)
+- Payments (Cash, Card, Mobile, manually verified KBZPay QR) + receipts (PDF)
 - Inventory + cost tracking
 - Reports (daily + monthly)
 - Backups + restore scripts
@@ -43,9 +43,12 @@ flowchart LR
   A[Open] --> B[InProgress]
   B --> C[Ready]
   C --> D[Served]
-  D --> E[Paid]
-  E --> R[Receipt Generated]
-  R --> F[Closed]
+  D --> P[Cash or card or mobile confirmed]
+  D --> K[KBZPay payment pending]
+  K --> V[Cashier verifies in KBZPay Partner]
+  P --> F[Closed]
+  V --> F
+  F --> R[Receipt Generated]
   A --> X[Cancelled]
   B --> X
   C --> X
@@ -119,19 +122,28 @@ flowchart TD
 ### Orders lifecycle
 
 Order status flow:
-`Open → InProgress → Ready → Served → Paid → Closed` (or `Cancelled`)
+`Open → InProgress → Ready → Served → Closed` (or `Cancelled`). KBZPay uses `PaymentPending` between `Served` and `Closed`.
 
 - **Open**: created by waiter.
 - **InProgress/Ready**: kitchen workflow.
 - **Served**: waiter confirms delivery to table.
-- **Paid**: cashier records payment.
-- **Closed**: final state after payment (or cancelled if voided).
+- **PaymentPending**: KBZPay QR is displayed; payment is not yet confirmed.
+- **Paid**: legacy status for older orders.
+- **Closed**: final state after a confirmed payment.
 
 ### Payments & receipts
 
 - Payments are recorded against an order with method + amount.
 - Receipt PDF is generated from the order, payments, and shop profile.
 - Currency is displayed as **MMK** across UI and reports.
+
+### KBZPay QR checkout
+
+The restaurant needs its own official KBZPay merchant account, merchant QR image, and access to the KBZPay Partner app to check incoming payments. Admin uploads the QR under **Admin → KBZPay merchant QR** and tests it with the KBZPay app. The upload is stored locally as lossless PNG and included in local-host backups. The POS can show it without internet; the customer and merchant payment service still need connectivity to complete and verify the transfer.
+
+At **Orders → Pay → KBZPay**, the cashier starts QR checkout. The order remains `PaymentPending` until the cashier checks the successful incoming transaction and exact amount in KBZPay Partner, enters its transaction reference, and confirms. Do not rely on a customer screenshot. Cancelling KBZPay checkout returns the order to `Served`. The POS does not yet have KBZPay gateway/API access or automatic payment verification.
+
+Cash/Card/Mobile and confirmed KBZPay payments now record the full order amount and close the order in one database transaction. A KBZPay transaction reference cannot be recorded twice. Older orders may still show the legacy `Paid` status.
 
 ### Inventory & ingredient usage
 
@@ -183,8 +195,9 @@ These values appear on receipts and printouts.
 2. Move orders to InProgress → Ready
 
 **Cashier**
-1. Open Orders → select Paid order
-2. Enter payment → print receipt
+1. Open Orders → select a Served order → Pay
+2. Confirm payment; for KBZPay, check the incoming transaction in Partner first
+3. Print the receipt after the order closes
 
 **Admin**
 1. Manage menu, categories, ingredients

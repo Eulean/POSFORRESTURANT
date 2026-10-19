@@ -17,11 +17,13 @@ public class OrdersController : ControllerBase
 {
     private readonly AppDbContext _db;
     private readonly IConfiguration _configuration;
+    private readonly KbzPayQrStore _kbzPayQrStore;
 
-    public OrdersController(AppDbContext db, IConfiguration configuration)
+    public OrdersController(AppDbContext db, IConfiguration configuration, KbzPayQrStore kbzPayQrStore)
     {
         _db = db;
         _configuration = configuration;
+        _kbzPayQrStore = kbzPayQrStore;
     }
 
     [HttpGet]
@@ -361,6 +363,25 @@ public class OrdersController : ControllerBase
             return NotFound();
         }
 
+        var canAdvance = (order.Status, newStatus) switch
+        {
+            (OrderStatus.Open, OrderStatus.InProgress) => true,
+            (OrderStatus.InProgress, OrderStatus.Ready) => true,
+            (OrderStatus.Ready, OrderStatus.Served) => true,
+            (OrderStatus.Open or OrderStatus.InProgress or OrderStatus.Ready or OrderStatus.Served, OrderStatus.Cancelled) => true,
+            (OrderStatus.Paid, OrderStatus.Closed) => User.IsInRole(Roles.Cashier) || User.IsInRole(Roles.Admin),
+            _ => false
+        };
+        if (!canAdvance)
+        {
+            return Conflict("This status change is not allowed. Payments must be confirmed through checkout.");
+        }
+        if (order.Status == OrderStatus.Paid &&
+            !await _db.Payments.AnyAsync(p => p.OrderId == order.Id))
+        {
+            return Conflict("A payment record is required before closing the order.");
+        }
+
         order.Status = newStatus;
         order.UpdatedAt = DateTime.UtcNow;
 
@@ -383,27 +404,121 @@ public class OrdersController : ControllerBase
     [Authorize(Roles = Roles.Cashier + "," + Roles.Admin)]
     public async Task<ActionResult> AddPayment(int id, PaymentCreateRequest request)
     {
-        var order = await _db.Orders.FindAsync(id);
-        if (order == null)
+        var method = request.Method?.Trim();
+        if (method is not ("Cash" or "Card" or "Mobile"))
         {
-            return NotFound();
+            return BadRequest("Choose Cash, Card, or Mobile. KBZPay uses its own confirmation flow.");
+        }
+        if (request.Amount <= 0)
+        {
+            return BadRequest("Payment amount must be positive.");
+        }
+        var reference = request.Reference?.Trim();
+        if (reference?.Length > 100)
+        {
+            return BadRequest("Reference must be 100 characters or fewer.");
+        }
+        return await CompletePaymentAsync(id, OrderStatus.Served, request.Amount, method, reference);
+    }
+
+    [HttpPost("{id:int}/kbzpay/start")]
+    [Authorize(Roles = Roles.Cashier + "," + Roles.Admin)]
+    public async Task<ActionResult> StartKbzPay(int id)
+    {
+        if (!_kbzPayQrStore.Exists)
+        {
+            return Conflict("An admin must upload the restaurant's KBZPay merchant QR first.");
+        }
+        var changed = await _db.Orders
+            .Where(o => o.Id == id && o.Status == OrderStatus.Served &&
+                !_db.Payments.Any(p => p.OrderId == o.Id))
+            .ExecuteUpdateAsync(update => update
+                .SetProperty(o => o.Status, OrderStatus.PaymentPending)
+                .SetProperty(o => o.UpdatedAt, DateTime.UtcNow));
+        if (changed == 0)
+        {
+            return await _db.Orders.AnyAsync(o => o.Id == id)
+                ? Conflict("Only an unpaid served order can start KBZPay checkout.") : NotFound();
+        }
+        return NoContent();
+    }
+
+    [HttpPost("{id:int}/kbzpay/cancel")]
+    [Authorize(Roles = Roles.Cashier + "," + Roles.Admin)]
+    public async Task<ActionResult> CancelKbzPay(int id)
+    {
+        var changed = await _db.Orders
+            .Where(o => o.Id == id && o.Status == OrderStatus.PaymentPending)
+            .ExecuteUpdateAsync(update => update
+                .SetProperty(o => o.Status, OrderStatus.Served)
+                .SetProperty(o => o.UpdatedAt, DateTime.UtcNow));
+        if (changed == 0)
+        {
+            return await _db.Orders.AnyAsync(o => o.Id == id)
+                ? Conflict("This order is not awaiting KBZPay confirmation.") : NotFound();
+        }
+        return NoContent();
+    }
+
+    [HttpPost("{id:int}/kbzpay/confirm")]
+    [Authorize(Roles = Roles.Cashier + "," + Roles.Admin)]
+    public async Task<ActionResult> ConfirmKbzPay(int id, KbzPayConfirmRequest request)
+    {
+        var reference = request.Reference?.Trim();
+        if (!request.VerifiedInPartnerApp || string.IsNullOrWhiteSpace(reference) || reference.Length > 100)
+        {
+            return BadRequest("Check the payment in KBZPay Partner and enter its transaction reference.");
         }
 
+        var total = await _db.Orders.Where(o => o.Id == id).Select(o => (decimal?)o.TotalAmount).FirstOrDefaultAsync();
+        if (total == null) return NotFound();
+        return await CompletePaymentAsync(id, OrderStatus.PaymentPending, total.Value, "KBZPay", reference);
+    }
+
+    private async Task<ActionResult> CompletePaymentAsync(int id, OrderStatus expectedStatus,
+        decimal amount, string method, string? reference)
+    {
+        await using var transaction = await _db.Database.BeginTransactionAsync();
+        var order = await _db.Orders.AsNoTracking()
+            .Where(o => o.Id == id)
+            .Select(o => new { o.TotalAmount, o.DiningTableId })
+            .FirstOrDefaultAsync();
+        if (order == null) return NotFound();
+        if (amount != order.TotalAmount || order.TotalAmount <= 0)
+        {
+            return BadRequest("Payment must match the full order total.");
+        }
+        if (method == "KBZPay" &&
+            await _db.Payments.AnyAsync(p => p.Method == "KBZPay" && p.Reference == reference))
+        {
+            return Conflict("This KBZPay transaction reference was already recorded.");
+        }
+
+        var now = DateTime.UtcNow;
+        var changed = await _db.Orders
+            .Where(o => o.Id == id && o.Status == expectedStatus &&
+                !_db.Payments.Any(p => p.OrderId == o.Id))
+            .ExecuteUpdateAsync(update => update
+                .SetProperty(o => o.Status, OrderStatus.Closed)
+                .SetProperty(o => o.UpdatedAt, now)
+                .SetProperty(o => o.ClosedAt, now));
+        if (changed == 0)
+        {
+            return Conflict("This order is not awaiting this payment or has already been paid.");
+        }
+
+        await _db.DiningTables.Where(t => t.Id == order.DiningTableId)
+            .ExecuteUpdateAsync(update => update.SetProperty(t => t.IsAvailable, true));
         _db.Payments.Add(new Payment
         {
-            OrderId = order.Id,
-            Amount = request.Amount,
-            Method = request.Method.Trim(),
-            Reference = request.Reference?.Trim()
+            OrderId = id,
+            Amount = amount,
+            Method = method,
+            Reference = reference,
+            PaidAt = now
         });
-
-        if (order.Status == OrderStatus.Served)
-        {
-            order.Status = OrderStatus.Paid;
-            order.UpdatedAt = DateTime.UtcNow;
-        }
-
         await _db.SaveChangesAsync();
+        await transaction.CommitAsync();
         return NoContent();
     }
 

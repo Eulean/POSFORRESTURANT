@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react'
 import { fetchUsers, resetUserPassword, updateUserRole } from '../api/admin'
 import { register } from '../api/auth'
 import { fetchShopProfile, updateShopProfile, uploadShopLogo } from '../api/shopProfile'
+import { deleteKbzPayQr, fetchKbzPaySettings, uploadKbzPayQr } from '../api/kbzpay'
+import { mediaUrl } from '../api/config'
 import { useToast } from '../context/ToastContext'
 import type { AppUser } from '../types/admin'
 import type { RegisterRequest, ShopProfileUpdateRequest } from '../types/api'
@@ -33,14 +35,17 @@ export default function Admin() {
   const [isSavingProfile, setIsSavingProfile] = useState(false)
   const [logoUrl, setLogoUrl] = useState<string | null>(null)
   const [isUploadingLogo, setIsUploadingLogo] = useState(false)
+  const [kbzPayQrUrl, setKbzPayQrUrl] = useState<string | null>(null)
+  const [isUpdatingKbzPayQr, setIsUpdatingKbzPayQr] = useState(false)
 
   useEffect(() => {
     let active = true
     const load = async () => {
       try {
-        const [userData, profileData] = await Promise.all([
+        const [userData, profileData, kbzPaySettings] = await Promise.all([
           fetchUsers(),
-          fetchShopProfile()
+          fetchShopProfile(),
+          fetchKbzPaySettings()
         ])
         if (active) {
           setUsers(userData)
@@ -50,6 +55,7 @@ export default function Admin() {
             phone: profileData.phone ?? ''
           })
           setLogoUrl(profileData.logoUrl ?? '/logo')
+          setKbzPayQrUrl(kbzPaySettings.qrUrl)
         }
       } catch {
         if (active) setError('Unable to load users.')
@@ -171,6 +177,39 @@ export default function Admin() {
       setError('Unable to upload logo.')
     } finally {
       setIsUploadingLogo(false)
+    }
+  }
+
+  const handleKbzPayQrUpload = async (file?: File | null) => {
+    if (!file) return
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+      setError('Choose a JPEG, PNG, or WebP image for the KBZPay QR.')
+      return
+    }
+    setIsUpdatingKbzPayQr(true)
+    try {
+      const saved = await uploadKbzPayQr(file)
+      setKbzPayQrUrl(saved.qrUrl)
+      setError(null)
+      addToast('KBZPay QR saved. Scan it with KBZPay to check it before taking payments.')
+    } catch {
+      setError('Unable to upload KBZPay QR. Use an image smaller than 10 MB.')
+    } finally {
+      setIsUpdatingKbzPayQr(false)
+    }
+  }
+
+  const handleKbzPayQrDelete = async () => {
+    setIsUpdatingKbzPayQr(true)
+    try {
+      await deleteKbzPayQr()
+      setKbzPayQrUrl(null)
+      setError(null)
+      addToast('KBZPay QR removed.')
+    } catch {
+      setError('Unable to remove KBZPay QR.')
+    } finally {
+      setIsUpdatingKbzPayQr(false)
     }
   }
 
@@ -350,6 +389,36 @@ export default function Admin() {
         >
           {isSavingProfile ? 'Saving...' : 'Save Location'}
         </button>
+      </section>
+
+      <section className="rounded-3xl border border-[var(--border)] bg-[var(--card)] p-6 shadow-sm">
+        <h4 className="text-lg font-semibold text-[var(--ink)]">KBZPay merchant QR</h4>
+        <p className="mt-1 text-sm text-[var(--muted)]">
+          Upload the restaurant's official KBZPay merchant QR. Cashiers will show it at checkout; payments are confirmed manually in KBZPay Partner.
+        </p>
+        <div className="mt-4 flex flex-wrap items-center gap-5">
+          {kbzPayQrUrl ? (
+            <img src={mediaUrl(kbzPayQrUrl)} alt="Saved KBZPay merchant QR" className="h-44 w-44 rounded-2xl border border-[var(--border)] bg-white object-contain p-2" />
+          ) : (
+            <div className="flex h-44 w-44 items-center justify-center rounded-2xl border border-dashed border-[var(--border)] text-center text-sm text-[var(--muted)]">
+              No QR uploaded
+            </div>
+          )}
+          <div className="flex flex-col gap-3">
+            <label className="btn btn-primary btn-soft btn-md cursor-pointer">
+              {isUpdatingKbzPayQr ? 'Saving...' : kbzPayQrUrl ? 'Replace QR' : 'Upload QR'}
+              <input type="file" accept="image/jpeg,image/png,image/webp" className="hidden"
+                onChange={(event) => handleKbzPayQrUpload(event.target.files?.[0])}
+                disabled={isUpdatingKbzPayQr} />
+            </label>
+            {kbzPayQrUrl && (
+              <button className="btn btn-ghost btn-soft btn-sm" onClick={handleKbzPayQrDelete} disabled={isUpdatingKbzPayQr}>
+                Remove QR
+              </button>
+            )}
+          </div>
+        </div>
+        <p className="mt-3 text-xs text-[var(--muted)]">The image is stored locally with the POS and included in local-host backups. Test a scan after uploading.</p>
       </section>
 
       <div className="rounded-3xl border border-[var(--border)] bg-[var(--card)] p-6 shadow-sm">
