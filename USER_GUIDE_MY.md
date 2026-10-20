@@ -15,7 +15,7 @@
 
 ## ၂။ Windows laptop တွင် ပထမဆုံး host လုပ်နည်း
 
-1. [နောက်ဆုံးထုတ် Windows ZIP](https://github.com/Eulean/POSFORRESTURANT/releases/latest) ကို download လုပ်ပါ။ ZIP download လုပ်ချိန်တွင် Internet လိုနိုင်သော်လည်း တပ်ဆင်ပြီး ဆိုင်အတွင်းအသုံးပြုချိန်တွင် Internet မလိုပါ။
+1. ဆိုင်တာဝန်ခံက ပေးထားသော **RestaurantPos-LocalHost.zip** ကို USB မှ ကူးယူပါ သို့မဟုတ် ပေးထားသည့်နေရာမှ download လုပ်ပါ။ Download လုပ်ချိန်တွင် Internet လိုနိုင်သော်လည်း တပ်ဆင်ပြီး ဆိုင်အတွင်းအသုံးပြုချိန်တွင် Internet မလိုပါ။
 2. ZIP ကို laptop ၏ တည်ငြိမ်သော folder အသစ်ထဲသို့ **Extract All** လုပ်ပါ။ ZIP အတွင်းကနေ တိုက်ရိုက်ဖွင့်မသုံးပါနှင့်။
 3. Laptop ကို ဆိုင်သုံး Wi-Fi နှင့် ချိတ်ပါ။ Extract လုပ်ထားသော folder ထဲရှိ `Start Restaurant POS.cmd` ကို နှစ်ချက်နှိပ်ပါ။ Command window ကို ဆိုင်ဖွင့်ချိန်တစ်လျှောက် မပိတ်ပါနှင့်။
 4. ပထမဆုံးဖွင့်ချိန်တွင် Admin password အသစ်တစ်ခု တောင်းမည်။ **အနည်းဆုံး စာလုံး ၁၀ လုံး** ထည့်ပြီး မှတ်ထားပါ။ ပထမ Admin username သည် `admin` ဖြစ်သည်။
@@ -90,7 +90,7 @@ Admin သာ ဝင်နိုင်သည်။ `Categories` တွင် အ�
 
 ### `Kitchen` — မီးဖိုဆောင်အလုပ်စာရင်း
 
-`InProgress` နှင့် `Ready` အုပ်စုနှစ်ခုကို ဖော်ပြသည်။ Order စတင်ပြင်ဆင်သည့်အခါ Orders စာမျက်နှာမှ `Open` ကို `InProgress` သို့ ရွှေ့ပါ။ ပြီးလျှင် Kitchen တွင် `Mark Ready` နှိပ်ပါ။ Customer ထံ ပို့ပြီးလျှင် `Mark Served` နှိပ်ပါ။ `Served` သို့ ရွှေ့ရာတွင် ဟင်းလျာနှင့် ingredient recipe ချိတ်ထားမှသာ stock အလိုအလျောက် လျော့မည်။ လက်ရှိ web UI တွင် recipe ချိတ်ရန် သီးခြား form မရှိသေးသဖြင့် stock ကို အလိုအလျောက်လျော့မည်ဟု မယူဆပါနှင့်။ Stock ကို `Inventory` တွင် စစ်/ပြင်ပါ။
+မီးဖိုဆောင်အလုပ်ကို အဆင့် ၃ ဆင့်ဖြင့် ပြထားသည်။ (၁) `New orders` တွင် အသစ်ဝင်သော order ကို စားပွဲနံပါတ်၊ အချိန်၊ ဟင်းအမည်နှင့် အရေအတွက်အလိုက် ဖတ်ပြီး `Start preparing` နှိပ်ပါ။ (၂) `Preparing` တွင် ချက်ပြုတ်ပြီးပါက `Mark ready` နှိပ်ပါ။ (၃) `Ready to serve` တွင် စားပွဲသို့ အမှန်တကယ် ပို့ပြီးမှ `Mark served` နှိပ်ပါ။ စာရင်းသည် ၅ စက္ကန့်တစ်ကြိမ် အသစ်ပြန်ဖတ်ပြီး `Refresh` ကိုလည်း နှိပ်နိုင်သည်။ အခြားဝန်ထမ်းက အရင်ပြောင်းထားလျှင် error ပြပြီး စာရင်းအသစ်ပြန်ဖတ်ပါမည်။ `Served` သို့ ရွှေ့ရာတွင် ဟင်းလျာနှင့် ingredient recipe ချိတ်ထားမှသာ stock အလိုအလျောက် လျော့မည်။ လက်ရှိ web UI တွင် recipe ချိတ်ရန် သီးခြား form မရှိသေးသဖြင့် stock ကို အလိုအလျောက်လျော့မည်ဟု မယူဆပါနှင့်။ Stock ကို `Inventory` တွင် စစ်/ပြင်ပါ။
 
 ### `Inventory` — ကုန်ကြမ်းလက်ကျန်
 
@@ -124,7 +124,8 @@ Admin သာ ဝင်နိုင်သည်။ အစိမ်းရောင
 - Server စတင်ချိန်နှင့် ၂၄ နာရီခြားတစ်ကြိမ် backup ZIP အလိုအလျောက် ဖန်တီးရန် ကြိုးစားသည်။ အရေးကြီးသောအလုပ်ပြီးတိုင်း Admin က `Connect devices` → `Create backup now` နှိပ်နိုင်သည်။ Backup ZIP များကို `%LOCALAPPDATA%\RestaurantPos\Backups` တွင် ရှာနိုင်သည်။ USB/အခြားစက်သို့ ပုံမှန်ကူးထားပါ။ Laptop တစ်လုံးတည်းတွင်ထားသော backup သည် laptop ပျက်လျှင် မကာကွယ်နိုင်ပါ။
 - POS ပိတ်ရန် app folder ထဲရှိ `Stop Restaurant POS.cmd` ကို နှစ်ချက်နှိပ်ပါ။ Host ပိတ်သွားလျှင် staff ဖုန်းများလည်း သုံးမရတော့ပါ။
 - Version အသစ်တင်မီ backup ယူပါ။ အဟောင်း folder ထဲရှိ `Stop Restaurant POS.cmd` ဖြင့် server ပိတ်ပါ။ ZIP အသစ်ကို **folder အသစ်** ထဲ extract လုပ်ပြီး ထို folder မှ `Start Restaurant POS.cmd` ဖွင့်ပါ။ `%LOCALAPPDATA%\RestaurantPos` data folder ကို **မဖျက်ပါနှင့်**။ App update လုပ်ရာတွင် data folder ကို ဆက်သုံးသည်။
-- Backup ZIP မှ ပြန်သွင်းရန် UI wizard မရှိသေးပါ။ ပြန်သွင်းရန်လိုလျှင် မူရင်း data folder နှင့် backup ZIP ကို မဖျက်ဘဲ နည်းပညာတာဝန်ခံနှင့် ဆက်သွယ်ပါ။
+- **Backup ပြန်သွင်းရန်:** Host laptop ပေါ်တွင် `Stop Restaurant POS.cmd` ကို နှစ်ချက်နှိပ်၍ server ကို အရင်ပိတ်ပါ။ App ကို extract လုပ်ထားသည့် folder မှ `Restore Restaurant POS.cmd` ကို နှစ်ချက်နှိပ်ပါ။ ပေါ်လာသော file picker တွင် `%LOCALAPPDATA%\RestaurantPos\Backups` ထဲမှ သို့မဟုတ် USB မှ ပြန်သွင်းလိုသည့် `.zip` backup ကို ရွေးပါ။ ပြထားသော backup လိပ်စာကို သေချာစစ်ပြီး `RESTORE` ဟု အတိအကျ ရိုက်မှ စတင်မည်။ အောင်မြင်ကြောင်းပြလျှင် `Start Restaurant POS.cmd` ကို ပြန်ဖွင့်ပြီး backup ထဲရှိ account/password ဖြင့် login ဝင်ပါ။
+- **အရေးကြီး:** ပြန်သွင်းခြင်းသည် လက်ရှိ order၊ staff account၊ menu၊ setting၊ ပုံများကို backup ရိုက်သည့်အချိန်က အခြေအနေဖြင့် အစားထိုးသည်။ ထို့နောက် ပြုလုပ်ခဲ့သော ပြောင်းလဲမှုများကို လက်ရှိ POS တွင် မမြင်ရတော့ပါ။ ပြန်မသွင်းမီ လက်ရှိ data ကို `Backups` ထဲ `RestaurantPos-before-restore-...zip` အဖြစ် အလိုအလျောက် safety backup ယူသည်။ Backup ZIP သို့မဟုတ် database ပျက်နေပါက လက်ရှိ data ကို မပြောင်းပါ။ မူရင်း ZIP နှင့် safety backup ကို မဖျက်ပါနှင့်။ ဖုန်း/PC များတွင် ပြန်ဖွင့်ပြီးနောက် login ပြန်ဝင်ရန် လိုနိုင်သည်။
 
 ## ၈။ အဖြစ်များသောပြဿနာများ
 

@@ -90,6 +90,7 @@ export default function Host() {
         <p className="mt-1 text-sm text-[var(--muted)]">A database and photo backup is created on the laptop when hosting starts and every 24 hours. Copy backup files to a USB drive regularly.</p>
         <button onClick={createBackup} disabled={backingUp} className="mt-4 rounded-xl bg-[var(--accent)] px-4 py-2 text-sm font-semibold text-white disabled:opacity-60">{backingUp ? 'Creating backup…' : 'Create backup now'}</button>
         {backupPath && <p className="mt-3 break-all text-sm text-[var(--muted)]">Saved on host laptop: {backupPath}</p>}
+        <p className="mt-4 text-sm text-[var(--muted)]">To recover: on the host laptop, stop Restaurant POS, double-click <span className="font-semibold">Restore Restaurant POS.cmd</span> in the app folder, choose a backup ZIP, then start the POS again. This replaces current orders and settings with the backup; a safety copy of current data is kept first.</p>
       </div>
       <p className="text-sm text-[var(--muted)]">No internet connection is required. Do not use guest Wi-Fi with device isolation; devices on that network may be unable to reach the laptop.</p>
     </section>

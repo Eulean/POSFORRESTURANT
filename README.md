@@ -16,7 +16,7 @@ For a restaurant operator, extract the prebuilt `out/RestaurantPos-LocalHost.zip
 
 Windows may ask for administrator approval once to allow TCP port 5268 on **Private** networks. The host will only listen on `localhost` and private network interfaces marked Private in Windows. If there is no Private network, change the trusted restaurant Wi-Fi's Windows network profile to Private, then restart the POS. Guest Wi-Fi with client isolation cannot be used. Do not forward port 5268 to the internet. This local setup uses HTTP, so use a trusted, password-protected restaurant Wi-Fi; it is not appropriate for untrusted networks.
 
-The database, uploaded images, logo, and backups live in `%LOCALAPPDATA%\RestaurantPos`. Keep that folder when replacing the app version. An SQLite-consistent ZIP backup is made at startup and every 24 hours while the app runs; admins can also select **Create backup now** on **Connect devices**. Copy ZIP backups from `%LOCALAPPDATA%\RestaurantPos\Backups` to a USB drive or other separate storage. The old `RestaurantPos.Backup.ps1` is for the developer setup, not this local-host package. A guided restore is not yet included: retain both the data folder and backup ZIPs before any reinstall or laptop replacement.
+The database, uploaded images, logo, and backups live in `%LOCALAPPDATA%\RestaurantPos`. Keep that folder when replacing the app version. An SQLite-consistent ZIP backup is made at startup and every 24 hours while the app runs; admins can also select **Create backup now** on **Connect devices**. Copy ZIP backups from `%LOCALAPPDATA%\RestaurantPos\Backups` to a USB drive or other separate storage. To recover, stop the local host, double-click **Restore Restaurant POS.cmd** in the extracted app folder, choose a backup ZIP, confirm, then start again. Restore validates the ZIP/database before replacing live data and creates a pre-restore safety backup. It restores orders, staff users/passwords, menu, settings and media to the backup's point in time; newer changes will no longer be live. The old `RestaurantPos.Backup.ps1` is only for the developer setup.
 
 To build the folder from source, run `powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Build-LocalHost.ps1` from the repository root on a Windows development machine with Node/npm and the .NET 8 SDK. The resulting package is self-contained: the restaurant laptop does not need these development tools. This step implements **PC hosting with phone/browser clients**, not hosting from an Android or iOS phone.
 
@@ -191,8 +191,8 @@ These values appear on receipts and printouts.
 3. Watch Kitchen screen → mark Served when delivered
 
 **Kitchen**
-1. Open Kitchen screen
-2. Move orders to InProgress → Ready
+1. Open Kitchen screen; new orders appear with table, time, quantities, and item names.
+2. Tap **Start preparing**, then **Mark ready**, then **Mark served** after delivery. The board refreshes every five seconds.
 
 **Cashier**
 1. Open Orders → select a Served order → Pay

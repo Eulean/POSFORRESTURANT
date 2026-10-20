@@ -35,6 +35,8 @@ Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'Allow-LocalHostFirewall.ps1') -
 Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'Start Restaurant POS.cmd') -Destination $resolvedOutput -Force
 Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'Stop Restaurant POS.cmd') -Destination $resolvedOutput -Force
 Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'Stop-LocalHost.ps1') -Destination $resolvedOutput -Force
+Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'Restore-LocalHost.ps1') -Destination $resolvedOutput -Force
+Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'Restore Restaurant POS.cmd') -Destination $resolvedOutput -Force
 Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'USER_GUIDE_MY.md') -Destination $resolvedOutput -Force
 foreach ($unusedConfig in @('appsettings.Development.json', 'appsettings.Production.json')) {
     $unusedPath = Join-Path $resolvedOutput $unusedConfig

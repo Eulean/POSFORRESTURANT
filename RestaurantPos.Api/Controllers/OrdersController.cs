@@ -382,12 +382,20 @@ public class OrdersController : ControllerBase
             return Conflict("A payment record is required before closing the order.");
         }
 
-        order.Status = newStatus;
-        order.UpdatedAt = DateTime.UtcNow;
+        await using var transaction = await _db.Database.BeginTransactionAsync();
+        var now = DateTime.UtcNow;
+        var changed = await _db.Orders.Where(o => o.Id == id && o.Status == order.Status)
+            .ExecuteUpdateAsync(update => update
+                .SetProperty(o => o.Status, newStatus)
+                .SetProperty(o => o.UpdatedAt, now)
+                .SetProperty(o => o.ClosedAt, o => newStatus == OrderStatus.Closed || newStatus == OrderStatus.Cancelled ? now : o.ClosedAt));
+        if (changed != 1)
+        {
+            return Conflict("This order was already changed by another staff member. Refresh and try again.");
+        }
 
         if (newStatus == OrderStatus.Closed || newStatus == OrderStatus.Cancelled)
         {
-            order.ClosedAt = DateTime.UtcNow;
             order.DiningTable.IsAvailable = true;
         }
 
@@ -397,6 +405,7 @@ public class OrdersController : ControllerBase
         }
 
         await _db.SaveChangesAsync();
+        await transaction.CommitAsync();
         return NoContent();
     }
 

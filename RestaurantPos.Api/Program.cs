@@ -15,6 +15,22 @@ using RestaurantPos.Api;
 using RestaurantPos.Api.Data;
 using RestaurantPos.Api.Models;
 
+if (args.Length == 3 && args[0] == "--restore-backup")
+{
+    try
+    {
+        var result = LocalHostRecovery.Restore(args[1], args[2]);
+        Console.WriteLine($"Restore complete. Pre-restore safety backup: {result}");
+        return;
+    }
+    catch (Exception exception)
+    {
+        Console.Error.WriteLine($"Restore failed: {exception.Message}");
+        Environment.ExitCode = 1;
+        return;
+    }
+}
+
 var builder = WebApplication.CreateBuilder(args);
 var localHostMode = builder.Environment.IsEnvironment("LocalHost");
 string? localHostDataDirectory = null;
